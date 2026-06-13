@@ -6,10 +6,28 @@ import Link from 'next/link';
 export default function DriverAttachment() {
   const [status, setStatus] = useState('');
 
-  const handleSubmit = (e) => {
+  const [formData, setFormData] = useState({
+    name: '', phone: '', vehicleModel: '', vehicleNo: '', experience: ''
+  });
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus('submitting');
-    setTimeout(() => setStatus('success'), 1500);
+    try {
+      const res = await fetch('/api/drivers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      if (res.ok) setStatus('success');
+      else {
+        alert('Failed to submit application. Try again.');
+        setStatus('');
+      }
+    } catch (e) {
+      alert('Network error.');
+      setStatus('');
+    }
   };
 
   return (
@@ -47,11 +65,11 @@ export default function DriverAttachment() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="form-label">Full Name</label>
-                    <input type="text" className="input-modern" required placeholder="Enter full name" />
+                    <input type="text" className="input-modern" required placeholder="Enter full name" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
                   </div>
                   <div>
                     <label className="form-label">Contact Number</label>
-                    <input type="tel" className="input-modern" required placeholder="Enter phone number" />
+                    <input type="tel" className="input-modern" required placeholder="Enter phone number" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
                   </div>
                   <div className="md:col-span-2">
                     <label className="form-label">Complete Address</label>
@@ -76,15 +94,15 @@ export default function DriverAttachment() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="form-label">Car Name / Model</label>
-                    <input type="text" className="input-modern" required placeholder="e.g. Maruti Dzire" />
+                    <input type="text" className="input-modern" required placeholder="e.g. Maruti Dzire" value={formData.vehicleModel} onChange={(e) => setFormData({...formData, vehicleModel: e.target.value})} />
                   </div>
                   <div>
                     <label className="form-label">Car Registration Number</label>
-                    <input type="text" className="input-modern" required placeholder="e.g. PB08 AA 1234" />
+                    <input type="text" className="input-modern" required placeholder="e.g. PB08 AA 1234" value={formData.vehicleNo} onChange={(e) => setFormData({...formData, vehicleNo: e.target.value})} />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="form-label">Chassis Number</label>
-                    <input type="text" className="input-modern" required placeholder="Enter chassis number" />
+                    <label className="form-label">Years of Experience</label>
+                    <input type="number" className="input-modern" required placeholder="e.g. 5" value={formData.experience} onChange={(e) => setFormData({...formData, experience: e.target.value})} />
                   </div>
                 </div>
               </div>

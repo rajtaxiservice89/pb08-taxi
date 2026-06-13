@@ -1,50 +1,78 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
+import { verifyToken } from '@/lib/auth';
 
-const prisma = new PrismaClient();
-
+// POST: Register a new driver application (public)
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const data = await request.json();
     
-    // In Phase 3, files will be uploaded to Vercel Blob and their URLs will be saved here.
-    // For now, we assume body contains string URLs if files are handled externally, or we just save text info.
-    
-    const newDriver = await prisma.driverProfile.create({
+    if (!data.name || !data.phone || !data.vehicleModel) {
+      return NextResponse.json({ error: 'Name, phone, and vehicle model are required' }, { status: 400 });
+    }
+
+    const driver = await prisma.driverProfile.create({
       data: {
-        name: body.name,
-        contact: body.contact,
-        address: body.address,
-        aadharNumber: body.aadharNumber,
-        licenseNumber: body.licenseNumber,
-        carRegistration: body.carRegistration,
-        chassisNumber: body.chassisNumber,
-        carName: body.carName,
-        selfieUrl: body.selfieUrl || null,
-        aadharFrontUrl: body.aadharFrontUrl || null,
-        aadharBackUrl: body.aadharBackUrl || null,
-        drivingLicenseUrl: body.drivingLicenseUrl || null,
-        carRegistrationDocUrl: body.carRegistrationDocUrl || null,
-        policeVerificationUrl: body.policeVerificationUrl || null,
-      },
+        name: data.name,
+        phone: data.phone,
+        vehicleModel: data.vehicleModel,
+        vehicleNo: data.vehicleNo || null,
+        experience: data.experience || null,
+        status: 'pending'
+      }
     });
 
-    return NextResponse.json({ message: 'Driver application submitted', driver: newDriver }, { status: 201 });
+    return NextResponse.json({ success: true, driver });
   } catch (error) {
-    console.error('Driver Submission Error:', error);
-    return NextResponse.json({ error: 'Failed to submit driver application' }, { status: 500 });
+    console.error("Driver registration error:", error);
+    return NextResponse.json({ error: 'Failed to submit application' }, { status: 500 });
   }
 }
 
+// GET: Fetch all drivers (Admin only)
 export async function GET(request) {
-  // TODO: Add authentication check here so only Admin can view drivers
   try {
+    const token = request.cookies.get('admin_token')?.value;
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    
+    const payload = await verifyToken(token);
+    if (!payload || payload.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const drivers = await prisma.driverProfile.findMany({
       orderBy: { createdAt: 'desc' }
     });
-    return NextResponse.json({ drivers }, { status: 200 });
+
+    return NextResponse.json({ success: true, drivers });
   } catch (error) {
-    console.error('Fetch Drivers Error:', error);
+    console.error("Fetch drivers error:", error);
     return NextResponse.json({ error: 'Failed to fetch drivers' }, { status: 500 });
+  }
+}
+
+// PATCH: Update driver status (Admin only)
+export async function PATCH(request) {
+  try {
+    const token = request.cookies.get('admin_token')?.value;
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    
+    const payload = await verifyToken(token);
+    if (!payload || payload.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id, status } = await request.json();
+    if (!id || !status) return NextResponse.json({ error: 'Missing data' }, { status: 400 });
+
+    const updatedDriver = await prisma.driverProfile.update({
+      where: { id },
+      data: { status }
+    });
+
+    return NextResponse.json({ success: true, driver: updatedDriver });
+  } catch (error) {
+    console.error("Update driver error:", error);
+    return NextResponse.json({ error: 'Failed to update driver' }, { status: 500 });
   }
 }

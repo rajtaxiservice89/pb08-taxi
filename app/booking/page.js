@@ -163,7 +163,32 @@ export default function Booking() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus('submitting');
-    setTimeout(() => { setStatus('success'); }, 1000);
+    
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.customerName,
+          phone: formData.customerPhone,
+          pickup: formData.pickup,
+          dropoff: formData.destination,
+          date: formData.date,
+          time: formData.time,
+          notes: `${formData.vehicleType} | ${formData.passengers} Pax | ${formData.notes}`
+        })
+      });
+
+      if (res.ok) {
+        setStatus('success');
+      } else {
+        setStatus('error');
+        alert("Failed to confirm booking. Please try again.");
+      }
+    } catch (err) {
+      setStatus('error');
+      alert("Network error. Please try again.");
+    }
   };
 
   return (

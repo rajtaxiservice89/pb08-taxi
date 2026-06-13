@@ -1,6 +1,26 @@
 import Link from 'next/link';
+import { prisma } from '@/lib/prisma';
 
-export default function Home() {
+// Revalidate this page every 60 seconds (or 0 for dynamic)
+export const revalidate = 0;
+
+export default async function Home() {
+  let settings = await prisma.siteSetting.findFirst();
+  
+  // Fallbacks if no settings found
+  if (!settings) {
+    settings = {
+      heroTitle: "Ride into the Future",
+      heroText: "Experience next-generation comfort and safety. From city commutes to outstation trips, we provide a seamless journey tailored for you.",
+      phone1: "9056273306"
+    };
+  }
+
+  // Helper to color the last word yellow
+  const titleWords = settings.heroTitle.split(' ');
+  const lastWord = titleWords.pop();
+  const restOfTitle = titleWords.join(' ');
+
   return (
     <div className="pt-24 pb-12 overflow-hidden relative">
       
@@ -16,10 +36,10 @@ export default function Home() {
             Jalandhar's Premium Transport
           </div>
           <h1 className="text-5xl md:text-7xl font-extrabold text-white mb-6 tracking-tight">
-            Ride into the <span className="text-taxi-yellow text-glow">Future</span>
+            {restOfTitle} <span className="text-taxi-yellow text-glow">{lastWord}</span>
           </h1>
           <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Experience next-generation comfort and safety. From city commutes to outstation trips, we provide a seamless journey tailored for you.
+            {settings.heroText}
           </p>
           
           <div className="flex flex-col sm:flex-row gap-5">
@@ -72,10 +92,10 @@ export default function Home() {
 
       {/* Floating WhatsApp and Call FABs */}
       <div className="fixed bottom-8 right-8 flex flex-col gap-4 z-50">
-        <a href="https://wa.me/919056273306" className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center text-white text-2xl shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:scale-110 transition-transform">
+        <a href={`https://wa.me/91${settings.phone1}`} className="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center text-white text-2xl shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:scale-110 transition-transform">
           <i className="fa-brands fa-whatsapp"></i>
         </a>
-        <a href="tel:9056273306" className="w-14 h-14 bg-taxi-yellow rounded-full flex items-center justify-center text-black text-xl shadow-[0_0_20px_rgba(255,215,0,0.4)] hover:scale-110 transition-transform">
+        <a href={`tel:${settings.phone1}`} className="w-14 h-14 bg-taxi-yellow rounded-full flex items-center justify-center text-black text-xl shadow-[0_0_20px_rgba(255,215,0,0.4)] hover:scale-110 transition-transform">
           <i className="fa-solid fa-phone"></i>
         </a>
       </div>
