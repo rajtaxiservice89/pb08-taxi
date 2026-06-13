@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Attachment | Join RAJ TAXI SERVICE</title>
+    <link rel="icon" href="images/taxi1.png" type="image/png">
+    <meta name="description" content="Attach your taxi with RAJ TAXI SERVICE. Submit KYC documents and join our network.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="http://localhost:3000/driver.html">
+	<link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="driver.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <img src="images/your-logo.gif" alt="RAJ TAXI SERVICE" class="logo-icon-png">
+                    <h1>RAJ TAXI SERVICE'S</h1>
+                </div>
+                <nav>
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="booking.html">Booking</a></li>
+                        <li><a href="driver.html" class="active">Driver Attachment</a></li>
+                        <li><a href="admin.html">Admin Login</a></li>
+                        <li><a href="contact.html">Contact Us</a></li>
+                    </ul>
+                </nav>
+                <div class="header-actions">
+                    <button class="whatsapp-btn" id="whatsappBtn">
+                        <i class="fab fa-whatsapp"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <section class="driver-form-section">
+            <h2>Join Our Team as a Driver</h2>
+            <p>Fill out the form below to become a driver with RAJ TAXI SERVICE'S</p>
+            
+            <div class="success-message" id="successMessage">
+                Your application has been submitted successfully! Our team will review your documents and contact you soon.
+            </div>
+            
+            <div class="error-message" id="errorMessage">
+                There was an error submitting your application. Please try again.
+            </div>
+            
+            <div class="google-drive-status" id="googleDriveStatus">
+                <i class="fab fa-google-drive"></i>
+                <span id="driveStatusText">Google Drive: Ready</span>
+            </div>
+                        
+            <div class="debug-info" id="debugInfo"></div>
+            
+            <form id="driverForm" class="driver-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="name">Full Name *</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="contact">Contact Number *</label>
+                        <input type="tel" id="contact" name="contact" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="address">Address *</label>
+                    <textarea id="address" name="address" rows="3" required></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="aadharNumber">Aadhar Card Number *</label>
+                        <input type="text" id="aadharNumber" name="aadharNumber" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="licenseNumber">Driving License Number *</label>
+                        <input type="text" id="licenseNumber" name="licenseNumber" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="carRegistration">Car Registration Number *</label>
+                        <input type="text" id="carRegistration" name="carRegistration" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="chassisNumber">Car Chassis Number *</label>
+                        <input type="text" id="chassisNumber" name="chassisNumber" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="carName">Car Name/Model *</label>
+                    <input type="text" id="carName" name="carName" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group file-upload-group">
+                        <label for="selfie">Upload Your Selfie *</label>
+                        <div class="file-upload">
+                            <input type="file" id="selfie" name="selfie" accept="image/*" required>
+                            <label for="selfie" class="file-upload-label">
+                                <i class="fas fa-camera"></i> Choose File
+                            </label>
+                            <span class="file-name" id="selfieName">No file chosen</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group file-upload-group">
+                        <label for="aadharFront">Aadhar Card Front *</label>
+                        <div class="file-upload">
+                            <input type="file" id="aadharFront" name="aadharFront" accept="image/*" required>
+                            <label for="aadharFront" class="file-upload-label">
+                                <i class="fas fa-id-card"></i> Choose File
+                            </label>
+                            <span class="file-name" id="aadharFrontName">No file chosen</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group file-upload-group">
+                        <label for="aadharBack">Aadhar Card Back *</label>
+                        <div class="file-upload">
+                            <input type="file" id="aadharBack" name="aadharBack" accept="image/*" required>
+                            <label for="aadharBack" class="file-upload-label">
+                                <i class="fas fa-id-card"></i> Choose File
+                            </label>
+                            <span class="file-name" id="aadharBackName">No file chosen</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group file-upload-group">
+                        <label for="drivingLicense">Upload Driving Licence *</label>
+                        <div class="file-upload">
+                            <input type="file" id="drivingLicense" name="drivingLicense" accept="image/*,.pdf" required>
+                            <label for="drivingLicense" class="file-upload-label">
+                                <i class="fas fa-id-card"></i> Choose File
+                            </label>
+                            <span class="file-name" id="licenseName">No file chosen</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group file-upload-group">
+                        <label for="carRegistrationDoc">Car Registration Document *</label>
+                        <div class="file-upload">
+                            <input type="file" id="carRegistrationDoc" name="carRegistrationDoc" accept="image/*,.pdf" required>
+                            <label for="carRegistrationDoc" class="file-upload-label">
+                                <i class="fas fa-file-alt"></i> Choose File
+                            </label>
+                            <span class="file-name" id="carRegistrationDocName">No file chosen</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group file-upload-group">
+                        <label for="policeVerification">Upload Police Verification *</label>
+                        <div class="file-upload">
+                            <input type="file" id="policeVerification" name="policeVerification" accept="image/*,.pdf" required>
+                            <label for="policeVerification" class="file-upload-label">
+                                <i class="fas fa-file-alt"></i> Choose File
+                            </label>
+                            <span class="file-name" id="verificationName">No file chosen</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="terms" name="terms" required>
+                    <label for="terms">I agree to the terms and conditions *</label>
+                </div>
+                
+                <div class="spinner" id="spinner"></div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn submit-btn">Submit Application</button>
+                    <button type="button" class="btn upload-docs-btn" id="uploadDocsBtn">Save to Google Drive</button>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    <!-- WhatsApp Links Modal -->
+    <div id="whatsappModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 class="form-title">WhatsApp Joining Links</h2>
+            <div class="whatsapp-links" id="whatsappLinks">
+                <!-- WhatsApp links will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Drive Auth Modal -->
+    <div id="googleDriveAuthModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 class="form-title">Google Drive Authorization</h2>
+            <p>To save driver data to Google Drive, you need to authorize access.</p>
+            <button class="btn google-drive-auth-btn" id="googleDriveAuthBtn">
+                <i class="fab fa-google-drive"></i> Authorize Google Drive
+            </button>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>RAJ TAXI SERVICE'S</h3>
+                    <p>Your reliable partner for safe and comfortable transportation across the city and beyond.</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Quick Links</h3>
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="booking.html">Booking</a></li>
+                        <li><a href="driver.html">Driver Attachment</a></li>
+                        <li><a href="admin.html">Admin Login</a></li>
+                        <li><a href="contact.html">Contact Us</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Contact Information</h3>
+                    <div class="contact-info">
+                        <p><i class="fas fa-phone"></i> 9056273306</p>
+                        <p><i class="fas fa-phone"></i> 9888079736</p>
+                        <p><i class="fas fa-envelope"></i> info@rajtaxi.com</p>
+                        <p><i class="fas fa-map-marker-alt"></i> Main Street, City Center</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="road">
+            <div class="taxi">
+                <img src="images/Drive-gif.gif" alt="RAJ TAXI SERVICE" class="fas fa-taxi-gif">
+            </div>
+        </div>
+        
+        <div class="copyright">
+            <p>&copy; 2023 RAJ TAXI SERVICE'S. All rights reserved. Designed By Deepak Raj</p>
+        </div>
+    </footer>
+
+    <!-- Google API Client -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    <!-- Shared site script for audio + nav -->
+    <script src="script.js"></script>
+    <script src="driver.js"></script>
+</body>
+</html>

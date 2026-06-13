@@ -1,0 +1,20 @@
+{
+  "name": "raj-taxi-ready",
+  "version": "1.0.0",
+  "description": "RAJ TAXI SERVICE - static site with backend for bookings and driver data storage",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+  "multer": "^1.4.5-lts.1",
+  "nanoid": "^5.0.7",
+  "archiver": "^5.3.2",
+  "serve-index": "^1.9.1"
+  }
+}

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Taxi in Jalandhar | RAJ TAXI SERVICE</title>
+    <link rel="icon" href="images/taxi1.png" type="image/png">
+    <meta name="description" content="Book a taxi in Jalandhar instantly. Airport pickup/drop, outstation, one way rides. 24/7 support.">
+    <meta name="keywords" content="Book Taxi, Jalandhar Cab Booking, Airport Pickup, Outstation Taxi, One Way Taxi">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="http://localhost:3000/booking.html">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Book Taxi in Jalandhar | RAJ TAXI SERVICE">
+    <meta property="og:description" content="Instant taxi booking for airport and city rides.">
+    <meta property="og:url" content="http://localhost:3000/booking.html">
+    <meta property="og:image" content="http://localhost:3000/images/taxi1.png">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <img src="images/your-logo.gif" alt="RAJ TAXI SERVICE" class="logo-icon-png">
+                    <h1>RAJ TAXI SERVICE'S</h1>
+                </div>
+                <nav>
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="booking.html" class="active">Booking</a></li>
+						<li><a href="driver.html">Driver Attachment</a></li>
+                        <li><a href="admin.html">Admin Login</a></li>
+                        <li><a href="contact.html">Contact Us</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="booking-form">
+            <h2 class="form-title-book">Book Your Taxi</h2>
+            <form id="taxiBookingForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="customerName">Your Name</label>
+                        <input type="text" id="customerName" required placeholder="Enter your full name">
+                    </div>
+                    <div class="form-group">
+                        <label for="customerPhone">Phone Number</label>
+                        <input type="tel" id="customerPhone" required placeholder="Enter your phone number">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="pickup">Pickup Location</label>
+                        <input type="text" id="pickup" required placeholder="Search pickup address or drop a pin on map">
+                        <input type="hidden" id="pickupLat">
+                        <input type="hidden" id="pickupLng">
+                        <input type="hidden" id="pickupAddress">
+                    </div>
+                    <div class="form-group">
+                        <label for="destination">Destination</label>
+                        <input type="text" id="destination" required placeholder="Search destination address or drop a pin on map">
+                        <input type="hidden" id="destLat">
+                        <input type="hidden" id="destLng">
+                        <input type="hidden" id="destAddress">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="width:100%">
+                        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start">
+                            <div style="flex:1; min-width:280px">
+                                <label style="display:block; font-weight:600; margin-bottom:6px;">Pickup Map</label>
+                                <div id="pickupMap" style="height: 320px; width: 100%; border:1px solid #ddd; border-radius:8px; position:relative"></div>
+                                <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap">
+                                    <button type="button" id="useCurrentLocationBtn" class="btn">Use Current Location</button>
+                                    <button type="button" id="pickupHeadingBtn" class="btn">Use Device Heading</button>
+                                </div>
+                            </div>
+                            <div style="flex:1; min-width:280px">
+                                <label style="display:block; font-weight:600; margin-bottom:6px;">Drop Map</label>
+                                <div id="dropMap" style="height: 320px; width: 100%; border:1px solid #ddd; border-radius:8px; position:relative"></div>
+                                <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap">
+                                    <button type="button" id="dropHeadingBtn" class="btn">Use Device Heading</button>
+                                </div>
+                            </div>
+                        </div>
+                        <small>Tip: Click on each map or drag the marker to set exact locations. You can also type the addresses above.</small>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="date">Pickup Date</label>
+                        <input type="date" id="date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="time">Pickup Time</label>
+                        <input type="time" id="time" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="vehicleType">Vehicle Type</label>
+                        <select id="vehicleType" required>
+                            <option value="">Select Vehicle Type</option>
+                            <option value="hatchback">Hatchback</option>
+                            <option value="sedan">Sedan</option>
+                            <option value="suv">SUV</option>
+                            <option value="luxury">Luxury</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="passengers">Number of Passengers</label>
+                        <input type="number" id="passengers" min="1" max="10" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="notes">Special Instructions (Optional)</label>
+                    <textarea id="notes" rows="3" placeholder="Any special requirements... Like: With Bags Carrier, Without Bags Carrier, Bags Count: 3,  "></textarea>
+                </div>
+                
+                <button type="submit" class="btn">Confirm Booking</button>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>RAJ TAXI SERVICE'S</h3>
+                    <p>Your reliable partner for safe and comfortable transportation across the city and beyond.</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Quick Links</h3>
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="booking.html">Booking</a></li>
+						<li><a href="driver.html">Driver Attachment</a></li>
+                        <li><a href="admin.html">Admin Login</a></li>
+                        <li><a href="contact.html">Contact Us</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>Contact Information</h3>
+                    <div class="contact-info">
+                        <p><i class="fas fa-phone"></i> 9056273306</p>
+                        <p><i class="fas fa-phone"></i> 9888079736</p>
+                        <p><i class="fas fa-envelope"></i> info@rajtaxi.com</p>
+                        <p><i class="fas fa-map-marker-alt"></i> Main Street, City Center, Jalandhar</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="road">
+            <div class="taxi">
+                <img src="images/Drive-gif.gif" alt="RAJ TAXI SERVICE" class="fas fa-taxi-gif">
+            </div>
+        </div>
+        
+        <div class="copyright">
+            <p>&copy; 2023 RAJ TAXI SERVICE'S. All rights reserved. Designed By Deepak Raj</p>
+        </div>
+    </footer>
+
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <script>
+    // Simple geocoding using Nominatim
+    async function geocode(q){
+        // Bias to India by appending country filter
+        const query = `${q} India`;
+        const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&q=${encodeURIComponent(query)}`;
+        const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
+        const data = await res.json();
+        return data[0] ? { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name } : null;
+    }
+    </script>
+    <script src="script.js"></script>
+    <script>
+    async function revGeocode(lat, lng){
+        try{
+            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
+            const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            const data = await res.json();
+            return data?.display_name || '';
+        } catch { return ''; }
+    }
+    (function(){
+        const initial = { lng: 75.5762, lat: 31.3260, zoom: 12 };
+        const rasterStyle = {
+            version: 8,
+            sources: {
+                osm: {
+                    type: 'raster',
+                    tiles: [
+                        'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+                    ],
+                    tileSize: 256,
+                    attribution: '&copy; OpenStreetMap contributors'
+                }
+            },
+            layers: [ { id: 'osm', type: 'raster', source: 'osm' } ]
+        };
+        const pickupMap = new maplibregl.Map({
+            container: 'pickupMap', style: rasterStyle, center: [initial.lng, initial.lat], zoom: initial.zoom,
+            dragRotate: true, pitchWithRotate: true, touchZoomRotate: true
+        });
+        const dropMap = new maplibregl.Map({
+            container: 'dropMap', style: rasterStyle, center: [initial.lng, initial.lat], zoom: initial.zoom,
+            dragRotate: true, pitchWithRotate: true, touchZoomRotate: true
+        });
+        pickupMap.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true, visualizePitch: true }), 'top-right');
+        dropMap.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true, visualizePitch: true }), 'top-right');
+
+        let pickupMarker = null, destMarker = null;
+        function setPickup(lng, lat, addr){
+            if(pickupMarker) pickupMarker.remove();
+            pickupMarker = new maplibregl.Marker({ color: '#2ecc71', draggable: true }).setLngLat([lng, lat]).addTo(pickupMap);
+            document.getElementById('pickupLat').value = lat;
+            document.getElementById('pickupLng').value = lng;
+            if(addr){ document.getElementById('pickupAddress').value = addr; const p = document.getElementById('pickup'); if(p) p.value = addr; }
+            pickupMarker.on('dragend', async ()=>{
+                const ll = pickupMarker.getLngLat();
+                document.getElementById('pickupLat').value = ll.lat;
+                document.getElementById('pickupLng').value = ll.lng;
+                const a = await revGeocode(ll.lat, ll.lng);
+                if(a){ document.getElementById('pickupAddress').value = a; const p = document.getElementById('pickup'); if(p) p.value = a; }
+            });
+        }
+        function setDest(lng, lat, addr){
+            if(destMarker) destMarker.remove();
+            destMarker = new maplibregl.Marker({ color: '#e74c3c', draggable: true }).setLngLat([lng, lat]).addTo(dropMap);
+            document.getElementById('destLat').value = lat;
+            document.getElementById('destLng').value = lng;
+            if(addr){ document.getElementById('destAddress').value = addr; const d = document.getElementById('destination'); if(d) d.value = addr; }
+            destMarker.on('dragend', async ()=>{
+                const ll = destMarker.getLngLat();
+                document.getElementById('destLat').value = ll.lat;
+                document.getElementById('destLng').value = ll.lng;
+                const a = await revGeocode(ll.lat, ll.lng);
+                if(a){ document.getElementById('destAddress').value = a; const d = document.getElementById('destination'); if(d) d.value = a; }
+            });
+        }
+        pickupMap.on('click', async (e)=>{
+            const {lng, lat} = e.lngLat; setPickup(lng, lat);
+            const a = await revGeocode(lat, lng); if(a){ document.getElementById('pickupAddress').value = a; const p = document.getElementById('pickup'); if(p) p.value = a; }
+        });
+        dropMap.on('click', async (e)=>{
+            const {lng, lat} = e.lngLat; setDest(lng, lat);
+            const a = await revGeocode(lat, lng); if(a){ document.getElementById('destAddress').value = a; const d = document.getElementById('destination'); if(d) d.value = a; }
+        });
+        document.getElementById('pickup').addEventListener('change', async (ev)=>{
+            const v = ev.target.value.trim(); if(!v) return; const r = await geocode(v);
+            if(r){ setPickup(r.lng, r.lat, r.display); pickupMap.flyTo({ center: [r.lng, r.lat], zoom: 14 }); }
+        });
+        document.getElementById('destination').addEventListener('change', async (ev)=>{
+            const v = ev.target.value.trim(); if(!v) return; const r = await geocode(v);
+            if(r){ setDest(r.lng, r.lat, r.display); dropMap.flyTo({ center: [r.lng, r.lat], zoom: 14 }); }
+        });
+
+        const useCur = document.getElementById('useCurrentLocationBtn');
+        if(useCur){
+            useCur.addEventListener('click', ()=>{
+                if(!navigator.geolocation) { alert('Geolocation not supported'); return; }
+                navigator.geolocation.getCurrentPosition(async pos=>{
+                    const lat = pos.coords.latitude, lng = pos.coords.longitude;
+                    setPickup(lng, lat); pickupMap.flyTo({ center: [lng, lat], zoom: 15 });
+                    const a = await revGeocode(lat,lng); if(a){ document.getElementById('pickupAddress').value = a; const p = document.getElementById('pickup'); if(p) p.value = a; }
+                }, ()=>{ alert('Unable to get current location'); });
+            });
+        }
+
+    // (Removed North buttons on request)
+
+        // Device heading controls
+        async function useDeviceHeading(forMap){
+            try{
+                // iOS permission
+                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+                    const perm = await DeviceOrientationEvent.requestPermission();
+                    if (perm !== 'granted') { alert('Permission denied'); return; }
+                }
+                let handled = false;
+                const handler = (ev)=>{
+                    if(handled) return;
+                    handled = true;
+                    let heading = null;
+                    if (typeof ev.webkitCompassHeading === 'number') heading = ev.webkitCompassHeading;
+                    else if (typeof ev.alpha === 'number') heading = 360 - ev.alpha; // approx
+                    if (heading == null || isNaN(heading)) { alert('Heading not available'); window.removeEventListener('deviceorientation', handler); return; }
+                    // bearing in MapLibre is clockwise from north
+                    forMap.rotateTo(heading, { duration: 300 });
+                    window.removeEventListener('deviceorientation', handler);
+                };
+                window.addEventListener('deviceorientation', handler, { once: true });
+            } catch { alert('Heading not available on this device'); }
+        }
+        document.getElementById('pickupHeadingBtn')?.addEventListener('click', ()=> useDeviceHeading(pickupMap));
+        document.getElementById('dropHeadingBtn')?.addEventListener('click', ()=> useDeviceHeading(dropMap));
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+@echo off
+echo Starting Raj Taxi Next.js Development Server...
+echo The browser will open automatically in a few seconds...
+start cmd /c "timeout /t 5 /nobreak > nul & start http://localhost:3000"
+npm run dev
+pause

@@ -1,0 +1,25 @@
+[
+  {
+    "name": "Deepak",
+    "contact": "516516516565",
+    "address": "dsvds",
+    "aadharNumber": "554546",
+    "licenseNumber": "5464564",
+    "carRegistration": "56dsf",
+    "chassisNumber": "fdrff",
+    "carName": "df",
+    "folderName": "Deepak08092025",
+    "folderPath": "DriverData\\Deepak08092025",
+    "receivedAt": "2025-09-07T23:33:23.054Z",
+    "id": "0S3YRBR3",
+    "files": {
+      "selfie": "DriverData\\Deepak08092025\\selfie__Satnaam_ji_1.jpg",
+      "aadharFront": "DriverData\\Deepak08092025\\aadhar_front__TEST.jpg",
+      "aadharBack": "DriverData\\Deepak08092025\\aadhar_back__TEST_enhanced_01.jpg",
+      "drivingLicense": "DriverData\\Deepak08092025\\driving_license__TEST_enhanced_01.jpg",
+      "carRegistrationDoc": "DriverData\\Deepak08092025\\car_registration__TEST_enhanced_01.jpg",
+      "policeVerification": "DriverData\\Deepak08092025\\police_verification__TEST_enhanced_01.jpg"
+    },
+    "read": false
+  }
+]

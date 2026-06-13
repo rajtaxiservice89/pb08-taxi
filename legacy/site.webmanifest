@@ -1,0 +1,20 @@
+{
+  "name": "RAJ TAXI SERVICE",
+  "short_name": "RAJ TAXI",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f9c300",
+  "icons": [
+    {
+      "src": "/images/taxi1.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/taxi1.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

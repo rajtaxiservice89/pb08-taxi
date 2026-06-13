@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Admin {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SiteSetting {
+  id        String   @id @default("global")
+  heroTitle String   @default("Reliable & Safe Taxi Service in Jalandhar")
+  heroText  String   @default("Book a comfortable ride today. We offer airport transfers, outstation trips, and local rentals at the best prices.")
+  phone1    String   @default("9056273306")
+  phone2    String   @default("9888079736")
+  email     String   @default("info@rajtaxi.com")
+  address   String   @default("Main Street, City Center")
+  whatsapp1 String   @default("9056273306")
+  whatsapp2 String   @default("9888079736")
+  updatedAt DateTime @updatedAt
+}
+
+model Booking {
+  id            String   @id @default(uuid())
+  customerName  String
+  customerPhone String
+  pickup        String
+  pickupLat     Float?
+  pickupLng     Float?
+  destination   String
+  destLat       Float?
+  destLng       Float?
+  date          String
+  time          String
+  vehicleType   String
+  passengers    Int
+  notes         String?
+  status        String   @default("PENDING") // PENDING, CONFIRMED, COMPLETED, CANCELLED
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model DriverProfile {
+  id                    String   @id @default(uuid())
+  name                  String
+  contact               String   @unique
+  password              String?  // Made optional for existing applications, but required for login
+  address               String
+  aadharNumber          String   @unique
+  licenseNumber         String   @unique
+  carRegistration       String
+  chassisNumber         String
+  carName               String
+  selfieUrl             String?
+  aadharFrontUrl        String?
+  aadharBackUrl         String?
+  drivingLicenseUrl     String?
+  carRegistrationDocUrl String?
+  policeVerificationUrl String?
+  status                String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
