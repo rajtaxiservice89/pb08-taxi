@@ -115,8 +115,8 @@ export async function PATCH(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id, status, assignedDriverId } = await request.json();
-    if (!id || !status) return NextResponse.json({ error: 'Missing data' }, { status: 400 });
+    const { id, status, assignedDriverId, waDriverStatus, waCustomerStatus } = await request.json();
+    if (!id) return NextResponse.json({ error: 'Missing data' }, { status: 400 });
 
     if (role === 'driver') {
       const booking = await prisma.booking.findUnique({ where: { id } });
@@ -131,8 +131,11 @@ export async function PATCH(request) {
     }
 
     // Admin flow
-    const updateData = { status };
+    const updateData = {};
+    if (status) updateData.status = status;
     if (assignedDriverId) updateData.assignedDriverId = assignedDriverId;
+    if (waDriverStatus) updateData.waDriverStatus = waDriverStatus;
+    if (waCustomerStatus) updateData.waCustomerStatus = waCustomerStatus;
 
     const updatedBooking = await prisma.booking.update({
       where: { id },
@@ -162,5 +165,41 @@ export async function PATCH(request) {
   } catch (error) {
     console.error("Update booking error:", error);
     return NextResponse.json({ error: 'Failed to update booking' }, { status: 500 });
+  }
+}
+
+// DELETE: Delete bulk bookings (Admin only)
+export async function DELETE(request) {
+  try {
+    const adminToken = request.cookies.get('admin_token')?.value;
+    if (!adminToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    
+    const payload = await verifyToken(adminToken);
+    if (!payload || payload.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { ids, deleteAll } = await request.json();
+    
+    if (deleteAll) {
+      if (ids && ids.length > 0) {
+        await prisma.booking.deleteMany({
+          where: { id: { in: ids } }
+        });
+      } else {
+        await prisma.booking.deleteMany();
+      }
+    } else if (ids && ids.length > 0) {
+      await prisma.booking.deleteMany({
+        where: { id: { in: ids } }
+      });
+    } else {
+      return NextResponse.json({ error: 'No bookings selected' }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: true, message: 'Bookings deleted successfully' });
+  } catch (error) {
+    console.error("Delete bookings error:", error);
+    return NextResponse.json({ error: 'Failed to delete bookings' }, { status: 500 });
   }
 }

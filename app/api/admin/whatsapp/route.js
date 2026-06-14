@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(request) {
   try {
@@ -66,7 +67,7 @@ export async function POST(request) {
       const data = await res.json();
       return NextResponse.json({ success: true, ...data });
     } else if (action === 'send') {
-      const { phone, message } = body;
+      const { phone, message, bookingId, targetType } = body;
       const res = await fetch(`${serverUrl}/send`, {
         method: 'POST',
         headers: {
@@ -77,6 +78,16 @@ export async function POST(request) {
       });
 
       const data = await res.json();
+      const success = res.ok && data.success;
+
+      if (bookingId && targetType) {
+        const updateField = targetType === 'driver' ? 'waDriverStatus' : 'waCustomerStatus';
+        await prisma.booking.update({
+          where: { id: bookingId },
+          data: { [updateField]: success ? 'success' : 'error' }
+        }).catch(err => console.error("Failed to update booking WA status in DB:", err));
+      }
+
       if (!res.ok) {
         return NextResponse.json({ error: data.error || 'Failed to send message' }, { status: res.status });
       }

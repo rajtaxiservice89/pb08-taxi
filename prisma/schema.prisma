@@ -46,6 +46,8 @@ model Booking {
   notes         String?
   estimatedFare Float?
   status        String   @default("PENDING") // PENDING, CONFIRMED, COMPLETED, CANCELLED
+  waDriverStatus   String   @default("none") // none, pending, success, error
+  waCustomerStatus String   @default("none") // none, pending, success, error
   assignedDriverId String?
   assignedDriver   DriverProfile? @relation(fields: [assignedDriverId], references: [id])
   createdAt     DateTime @default(now())

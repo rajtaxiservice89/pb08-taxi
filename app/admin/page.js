@@ -49,6 +49,8 @@ export default function AdminDashboard() {
 
   const [bookingSearchQuery, setBookingSearchQuery] = useState('');
   const [bookingStatusFilter, setBookingStatusFilter] = useState('all');
+  const [bookingDateFilter, setBookingDateFilter] = useState('');
+  const [selectedBookings, setSelectedBookings] = useState([]);
 
   const router = useRouter();
 
@@ -280,16 +282,18 @@ export default function AdminDashboard() {
       const res = await fetch('/api/admin/whatsapp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'send', phone, message })
+        body: JSON.stringify({ action: 'send', phone, message, bookingId, targetType: type })
       });
       if (res.ok) {
-        setWaMsgStatus(prev => ({ ...prev, [key]: 'success' }));
-        setTimeout(() => setWaMsgStatus(prev => ({ ...prev, [key]: null })), 3000);
+        setWaMsgStatus(prev => ({ ...prev, [key]: null }));
+        setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, [type === 'driver' ? 'waDriverStatus' : 'waCustomerStatus']: 'success' } : b));
       } else {
-        setWaMsgStatus(prev => ({ ...prev, [key]: 'error' }));
+        setWaMsgStatus(prev => ({ ...prev, [key]: null }));
+        setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, [type === 'driver' ? 'waDriverStatus' : 'waCustomerStatus']: 'error' } : b));
       }
     } catch (e) {
-      setWaMsgStatus(prev => ({ ...prev, [key]: 'error' }));
+      setWaMsgStatus(prev => ({ ...prev, [key]: null }));
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, [type === 'driver' ? 'waDriverStatus' : 'waCustomerStatus']: 'error' } : b));
     }
   };
 
@@ -467,8 +471,53 @@ export default function AdminDashboard() {
                           b.pickup?.toLowerCase().includes(bookingSearchQuery.toLowerCase()) ||
                           b.destination?.toLowerCase().includes(bookingSearchQuery.toLowerCase());
     const matchesStatus = bookingStatusFilter === 'all' || b.status === bookingStatusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesDate = bookingDateFilter === '' || b.date === bookingDateFilter;
+    return matchesSearch && matchesStatus && matchesDate;
   });
+
+  const handleDeleteSelected = async () => {
+    if (selectedBookings.length === 0) return;
+    if (!confirm(`Are you sure you want to delete ${selectedBookings.length} selected bookings?`)) return;
+    
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedBookings, deleteAll: false })
+      });
+      if (res.ok) {
+        setBookings(prev => prev.filter(b => !selectedBookings.includes(b.id)));
+        setSelectedBookings([]);
+      } else {
+        alert('Failed to delete selected bookings');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting bookings');
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (filteredBookings.length === 0) return;
+    if (!confirm(`CAUTION: Are you sure you want to delete ALL ${filteredBookings.length} bookings currently shown?`)) return;
+    
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: filteredBookings.map(b => b.id), deleteAll: true })
+      });
+      if (res.ok) {
+        setBookings(prev => prev.filter(b => !filteredBookings.find(fb => fb.id === b.id)));
+        setSelectedBookings([]);
+      } else {
+        alert('Failed to delete all bookings');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting bookings');
+    }
+  };
 
   const approvedDrivers = drivers.filter(d => d.status === 'approved');
 
@@ -568,26 +617,45 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   
-                  {/* Search and Filter */}
-                  <div className="flex flex-col md:flex-row gap-4 mb-6">
-                    <div className="relative flex-1">
-                      <i className="fa-solid fa-search absolute left-4 top-3.5 text-gray-500"></i>
-                      <input 
-                        type="text" 
-                        placeholder="Search customer, phone, or location..." 
-                        className="input-modern !pl-10"
-                        value={bookingSearchQuery}
-                        onChange={e => setBookingSearchQuery(e.target.value)}
-                      />
+                  {/* Bulk Actions & Filters */}
+                  <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                    <div className="flex flex-wrap items-center gap-3">
+                      {selectedBookings.length > 0 && (
+                        <button onClick={handleDeleteSelected} className="border border-red-500/30 text-red-400 hover:bg-red-500/10 px-4 py-2 rounded-lg text-sm flex items-center gap-2">
+                          <i className="fa-solid fa-trash"></i> Delete Selected ({selectedBookings.length})
+                        </button>
+                      )}
+                      <button onClick={handleDeleteAll} className="border border-red-500/30 text-red-400 hover:bg-red-500/10 px-4 py-2 rounded-lg text-sm flex items-center gap-2">
+                        <i className="fa-solid fa-trash-can"></i> Delete All
+                      </button>
                     </div>
-                    <div className="w-full md:w-64">
+                    
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="relative">
+                        <input 
+                          type="date" 
+                          className="input-modern px-4 py-2 text-sm text-gray-300"
+                          value={bookingDateFilter}
+                          onChange={e => setBookingDateFilter(e.target.value)}
+                        />
+                      </div>
+                      <div className="relative">
+                        <i className="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                        <input 
+                          type="text" 
+                          placeholder="Search..." 
+                          className="input-modern !pl-10 !py-2 w-48 lg:w-64"
+                          value={bookingSearchQuery}
+                          onChange={e => setBookingSearchQuery(e.target.value)}
+                        />
+                      </div>
                       <select 
-                        className="input-modern appearance-none"
+                        className="input-modern appearance-none !py-2 w-40"
                         value={bookingStatusFilter}
                         onChange={e => setBookingStatusFilter(e.target.value)}
                       >
                         <option value="all">All Statuses</option>
-                        <option value="pending">Unconfirmed (Pending)</option>
+                        <option value="pending">Pending</option>
                         <option value="confirmed">Confirmed</option>
                         <option value="completed">Completed</option>
                         <option value="cancelled">Cancelled</option>
@@ -599,6 +667,17 @@ export default function AdminDashboard() {
                     <table className="w-full text-left text-sm text-gray-300">
                       <thead className="text-xs uppercase bg-black/50 text-gray-400">
                         <tr>
+                          <th className="px-6 py-4 font-medium w-10">
+                            <input 
+                              type="checkbox" 
+                              className="rounded border-gray-600 bg-black/30 text-taxi-yellow focus:ring-taxi-yellow/50 w-4 h-4 cursor-pointer"
+                              checked={filteredBookings.length > 0 && selectedBookings.length === filteredBookings.length}
+                              onChange={(e) => {
+                                if (e.target.checked) setSelectedBookings(filteredBookings.map(b => b.id));
+                                else setSelectedBookings([]);
+                              }}
+                            />
+                          </th>
                           <th className="px-6 py-4 font-medium">Customer</th>
                           <th className="px-6 py-4 font-medium">Route</th>
                           <th className="px-6 py-4 font-medium">Date / Time</th>
@@ -609,14 +688,14 @@ export default function AdminDashboard() {
                       <tbody>
                         {loadingBookings ? (
                           <tr className="border-t border-white/5 bg-black/20">
-                            <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
+                            <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
                               <i className="fa-solid fa-circle-notch fa-spin text-3xl mb-3 opacity-50 block"></i>
                               Loading Bookings...
                             </td>
                           </tr>
                         ) : filteredBookings.length === 0 ? (
                           <tr className="border-t border-white/5 bg-black/20">
-                            <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
+                            <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
                               <i className="fa-solid fa-inbox text-3xl mb-3 opacity-50 block"></i>
                               No bookings found
                             </td>
@@ -628,7 +707,18 @@ export default function AdminDashboard() {
                             const customerMsg = `Hello ${b.customerName},\nYour ride from ${b.pickup} to ${b.destination} is Confirmed!\n\nDriver Details:\nName: ${b.assignedDriver?.name}\nPhone: ${b.assignedDriver?.contact}\nVehicle: ${b.assignedDriver?.carName} - ${b.assignedDriver?.carRegistration}\nEstimated Fare: ₹${b.estimatedFare || 'N/A'}\n\nThe driver will reach you before the scheduled time.\nThank you for choosing Raj Taxi!`;
                             
                             return (
-                            <tr key={b.id} className="border-t border-white/5 bg-black/20 hover:bg-black/40 transition-colors">
+                            <tr key={b.id} className={`border-t border-white/5 transition-colors ${selectedBookings.includes(b.id) ? 'bg-taxi-yellow/5' : 'bg-black/20 hover:bg-black/40'}`}>
+                              <td className="px-6 py-4">
+                                <input 
+                                  type="checkbox" 
+                                  className="rounded border-gray-600 bg-black/30 text-taxi-yellow focus:ring-taxi-yellow/50 w-4 h-4 cursor-pointer"
+                                  checked={selectedBookings.includes(b.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) setSelectedBookings(prev => [...prev, b.id]);
+                                    else setSelectedBookings(prev => prev.filter(id => id !== b.id));
+                                  }}
+                                />
+                              </td>
                               <td className="px-6 py-4">
                                 <div className="font-bold text-white">{b.customerName}</div>
                                 <div className="text-xs text-gray-500">{b.customerPhone}</div>
@@ -659,9 +749,12 @@ export default function AdminDashboard() {
                                       title={!b.assignedDriver ? "Please assign a driver first" : "Auto-Send to Driver"}
                                     >
                                       <i className="fa-brands fa-whatsapp"></i> Driver
-                                      {waMsgStatus[`${b.id}_driver`] === 'loading' && <i className="fa-solid fa-spinner fa-spin text-xs ml-1"></i>}
-                                      {waMsgStatus[`${b.id}_driver`] === 'success' && <div className="w-2 h-2 rounded-full bg-green-500 ml-1"></div>}
-                                      {waMsgStatus[`${b.id}_driver`] === 'error' && <div className="w-2 h-2 rounded-full bg-red-500 ml-1"></div>}
+                                      {waMsgStatus[`${b.id}_driver`] === 'loading' ? (
+                                        <i className="fa-solid fa-spinner fa-spin text-xs ml-1"></i>
+                                      ) : (
+                                        b.waDriverStatus === 'success' ? <div className="w-2 h-2 rounded-full bg-green-500 ml-1"></div> :
+                                        b.waDriverStatus === 'error' ? <div className="w-2 h-2 rounded-full bg-red-500 ml-1"></div> : null
+                                      )}
                                     </button>
                                   ) : (
                                     <a href={`https://wa.me/?text=${encodeURIComponent(driverMsg)}`} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300 text-sm font-semibold border border-green-500/30 px-2 py-1 rounded bg-green-500/10 flex items-center gap-1" title="Share with Driver">
@@ -677,9 +770,12 @@ export default function AdminDashboard() {
                                         title="Auto-Send to Customer"
                                       >
                                         <i className="fa-brands fa-whatsapp"></i> Customer
-                                        {waMsgStatus[`${b.id}_customer`] === 'loading' && <i className="fa-solid fa-spinner fa-spin text-xs ml-1"></i>}
-                                        {waMsgStatus[`${b.id}_customer`] === 'success' && <div className="w-2 h-2 rounded-full bg-green-500 ml-1"></div>}
-                                        {waMsgStatus[`${b.id}_customer`] === 'error' && <div className="w-2 h-2 rounded-full bg-red-500 ml-1"></div>}
+                                        {waMsgStatus[`${b.id}_customer`] === 'loading' ? (
+                                          <i className="fa-solid fa-spinner fa-spin text-xs ml-1"></i>
+                                        ) : (
+                                          b.waCustomerStatus === 'success' ? <div className="w-2 h-2 rounded-full bg-green-500 ml-1"></div> :
+                                          b.waCustomerStatus === 'error' ? <div className="w-2 h-2 rounded-full bg-red-500 ml-1"></div> : null
+                                        )}
                                       </button>
                                     ) : (
                                       <a href={`https://wa.me/${b.customerPhone.replace(/\D/g,'')}?text=${encodeURIComponent(customerMsg)}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 text-sm font-semibold border border-blue-500/30 px-2 py-1 rounded bg-blue-500/10 flex items-center gap-1" title="Confirm Customer">
@@ -687,6 +783,13 @@ export default function AdminDashboard() {
                                       </a>
                                     )
                                   )}
+
+                                  {b.status === 'confirmed' && (
+                                    <button onClick={() => { setSelectedBookingId(b.id); setShowDriverModal(true); }} className="text-taxi-yellow hover:text-white text-sm font-semibold border border-taxi-yellow/30 px-2 py-1 rounded bg-taxi-yellow/10 ml-2">
+                                      <i className="fa-solid fa-pen"></i> Edit
+                                    </button>
+                                  )}
+                                  
                                   {b.status === 'pending' && (
                                     <button onClick={() => handleOpenAssignModal(b.id)} className="text-taxi-yellow hover:text-white text-sm font-semibold border border-yellow-500/30 px-2 py-1 rounded bg-yellow-500/10">Confirm Booking</button>
                                   )}
