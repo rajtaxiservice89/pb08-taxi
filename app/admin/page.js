@@ -12,16 +12,73 @@ export default function AdminDashboard() {
   });
   const [savingSettings, setSavingSettings] = useState(false);
 
+  // Fare Settings State
+  const [fareSettings, setFareSettings] = useState({
+    appCost: 50, driverCost: 50, baseFare: 50, distanceTiers: '[{"min": 0, "max": 5, "rate": 20}, {"min": 5, "max": 9999, "rate": 15}]'
+  });
+  const [savingFare, setSavingFare] = useState(false);
+
+  // Location APIs State
+  const [locationApis, setLocationApis] = useState([]);
+  const [newApi, setNewApi] = useState({ provider: 'locationiq', apiKey: '' });
+
+  // WhatsApp State
+  const [waStatus, setWaStatus] = useState({ isConnected: false, hasQR: false, qr: null, loading: false });
+
+  // Drivers State
   const [drivers, setDrivers] = useState([]);
   const [loadingDrivers, setLoadingDrivers] = useState(false);
+  const [driverSearchQuery, setDriverSearchQuery] = useState('');
+  const [driverStatusFilter, setDriverStatusFilter] = useState('all');
+  const [driverSourceFilter, setDriverSourceFilter] = useState('all');
+
+  const [bookingSearchQuery, setBookingSearchQuery] = useState('');
+  const [bookingStatusFilter, setBookingStatusFilter] = useState('all');
+
   const router = useRouter();
+
+  const [showSecurityModal, setShowSecurityModal] = useState(false);
+  const [currentPin, setCurrentPin] = useState('');
+  const [showCurrentPin, setShowCurrentPin] = useState(false);
+  const [newPin, setNewPin] = useState('');
+  const [showNewPin, setShowNewPin] = useState(false);
+  const [pinMessage, setPinMessage] = useState({ type: '', text: '' });
+  const [isChangingPin, setIsChangingPin] = useState(false);
+
+  const [showDriverModal, setShowDriverModal] = useState(false);
+  const [selectedBookingId, setSelectedBookingId] = useState(null);
+  const [selectedDriverId, setSelectedDriverId] = useState('');
+
+  // Driver CRUD Modal State
+  const [showDriverCrudModal, setShowDriverCrudModal] = useState(false);
+  const [showDriverPassword, setShowDriverPassword] = useState(false);
+  const [editingDriver, setEditingDriver] = useState(null);
+  const [driverForm, setDriverForm] = useState({
+    name: '', contact: '', password: '', address: '',
+    aadharNumber: '', licenseNumber: '', carRegistration: '',
+    chassisNumber: '', carName: '', status: 'approved'
+  });
+  const [savingDriver, setSavingDriver] = useState(false);
+  const [driverFormError, setDriverFormError] = useState('');
+
+  // Documents Modal
+  const [showDocsModal, setShowDocsModal] = useState(false);
+  const [selectedDriverForDocs, setSelectedDriverForDocs] = useState(null);
 
   // Load data based on tab
   useEffect(() => {
     if (activeTab === 'bookings') fetchBookings();
     if (activeTab === 'cms') fetchSettings();
     if (activeTab === 'drivers') fetchDrivers();
+    if (activeTab === 'fare') fetchFareSettings();
+    if (activeTab === 'location-api') fetchLocationApis();
+    if (activeTab === 'whatsapp') fetchWaStatus();
   }, [activeTab]);
+
+  // Load drivers initially to use in driver assignment modal
+  useEffect(() => {
+    fetchDrivers();
+  }, []);
 
   const fetchBookings = async () => {
     setLoadingBookings(true);
@@ -38,12 +95,62 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchWaStatus = async () => {
+    setWaStatus(prev => ({ ...prev, loading: true }));
+    try {
+      const res = await fetch('/api/admin/whatsapp');
+      if (res.ok) {
+        const data = await res.json();
+        setWaStatus({ isConnected: data.isConnected, hasQR: data.hasQR, qr: data.qr, loading: false });
+      } else {
+        setWaStatus(prev => ({ ...prev, loading: false }));
+      }
+    } catch {
+      setWaStatus(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleWaLogout = async () => {
+    if (!confirm('Are you sure you want to disconnect WhatsApp?')) return;
+    setWaStatus(prev => ({ ...prev, loading: true }));
+    try {
+      await fetch('/api/admin/whatsapp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'logout' })
+      });
+      fetchWaStatus();
+    } catch {
+      fetchWaStatus();
+    }
+  };
+
   const fetchSettings = async () => {
     try {
       const res = await fetch('/api/settings');
       if (res.ok) {
         const data = await res.json();
         if (data.settings) setSettings(data.settings);
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const fetchFareSettings = async () => {
+    try {
+      const res = await fetch('/api/admin/settings/fare');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.fareSetting) setFareSettings(data.fareSetting);
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const fetchLocationApis = async () => {
+    try {
+      const res = await fetch('/api/admin/settings/location-apis');
+      if (res.ok) {
+        const data = await res.json();
+        setLocationApis(data.apis || []);
       }
     } catch (e) { console.error(e); }
   };
@@ -78,15 +185,98 @@ export default function AdminDashboard() {
     }
   };
 
-  const updateBookingStatus = async (id, status) => {
+  const handleSaveFareSettings = async () => {
+    setSavingFare(true);
+    try {
+      const res = await fetch('/api/admin/settings/fare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fareSettings)
+      });
+      if (res.ok) alert('Fare Settings saved successfully!');
+    } catch (error) {
+      alert('Error saving fare settings');
+    } finally {
+      setSavingFare(false);
+    }
+  };
+
+  const handleAddLocationApi = async () => {
+    if(!newApi.apiKey) return alert("API Key is required");
+    try {
+      const res = await fetch('/api/admin/settings/location-apis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newApi)
+      });
+      if(res.ok) {
+        setNewApi({ provider: 'locationiq', apiKey: '' });
+        fetchLocationApis();
+      } else alert("Failed to add API");
+    } catch(e) { alert("Error adding API"); }
+  };
+
+  const handleSetActiveLocationApi = async (id) => {
+    try {
+      const res = await fetch('/api/admin/settings/location-apis', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      if(res.ok) fetchLocationApis();
+    } catch(e) { alert("Error setting active API"); }
+  };
+
+  const handleDeleteLocationApi = async (id) => {
+    if(!confirm("Are you sure you want to delete this API Key?")) return;
+    try {
+      const res = await fetch(`/api/admin/settings/location-apis?id=${id}`, { method: 'DELETE' });
+      if(res.ok) fetchLocationApis();
+    } catch(e) { alert("Error deleting API"); }
+  };
+
+  const handleUpdateTier = (index, field, value) => {
+    try {
+      let tiers = JSON.parse(fareSettings.distanceTiers);
+      tiers[index][field] = parseFloat(value) || 0;
+      setFareSettings({ ...fareSettings, distanceTiers: JSON.stringify(tiers) });
+    } catch(e) {}
+  };
+  const handleAddTier = () => {
+    try {
+      let tiers = JSON.parse(fareSettings.distanceTiers);
+      tiers.push({ min: 0, max: 0, rate: 0 });
+      setFareSettings({ ...fareSettings, distanceTiers: JSON.stringify(tiers) });
+    } catch(e) {}
+  };
+  const handleRemoveTier = (index) => {
+    try {
+      let tiers = JSON.parse(fareSettings.distanceTiers);
+      tiers.splice(index, 1);
+      setFareSettings({ ...fareSettings, distanceTiers: JSON.stringify(tiers) });
+    } catch(e) {}
+  };
+
+  const updateBookingStatus = async (id, status, driverId = null) => {
     try {
       const res = await fetch('/api/bookings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status })
+        body: JSON.stringify({ id, status, assignedDriverId: driverId })
       });
       if (res.ok) {
-        fetchBookings(); // reload
+        if (status === 'confirmed' && driverId) {
+          const assignedDriver = drivers.find(d => d.id === driverId);
+          const booking = bookings.find(b => b.id === id);
+          if (assignedDriver && booking) {
+            const customerMsg = `Hello ${booking.customerName},\nYour ride from ${booking.pickup} to ${booking.destination} is Confirmed!\n\nDriver Details:\nName: ${assignedDriver.name}\nPhone: ${assignedDriver.contact}\nVehicle: ${assignedDriver.carName} - ${assignedDriver.carRegistration}\nEstimated Fare: ₹${booking.estimatedFare || 'N/A'}\n\nThe driver will reach you before the scheduled time.\nThank you for choosing Raj Taxi!`;
+            window.open(`https://wa.me/${booking.customerPhone.replace(/\D/g,'')}?text=${encodeURIComponent(customerMsg)}`, '_blank');
+          }
+          setShowDriverModal(false);
+          setSelectedBookingId(null);
+          setSelectedDriverId('');
+        }
+        fetchBookings(); // reload after to get updated status
       }
     } catch (e) {
       console.error(e);
@@ -104,10 +294,143 @@ export default function AdminDashboard() {
     } catch (e) { console.error(e); }
   };
 
+  const handleDeleteDriver = async (id) => {
+    if (!confirm("Are you sure you want to completely delete this driver? This action cannot be undone.")) return;
+    try {
+      const res = await fetch('/api/drivers', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      if (res.ok) fetchDrivers();
+      else {
+        const data = await res.json();
+        alert(data.error || "Failed to delete driver.");
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const handleOpenDriverCrud = (driver = null) => {
+    if (driver) {
+      setEditingDriver(driver);
+      setDriverForm({
+        name: driver.name || '',
+        contact: driver.contact || '',
+        password: '', // do not populate password for security
+        address: driver.address || '',
+        aadharNumber: driver.aadharNumber || '',
+        licenseNumber: driver.licenseNumber || '',
+        carRegistration: driver.carRegistration || '',
+        chassisNumber: driver.chassisNumber || '',
+        carName: driver.carName || '',
+        status: driver.status || 'approved'
+      });
+    } else {
+      setEditingDriver(null);
+      setDriverForm({
+        name: '', contact: '', password: '', address: '',
+        aadharNumber: '', licenseNumber: '', carRegistration: '',
+        chassisNumber: '', carName: '', status: 'approved', createdBy: 'admin'
+      });
+    }
+    setDriverFormError('');
+    setShowDriverCrudModal(true);
+  };
+
+  const handleSaveDriver = async (e) => {
+    e.preventDefault();
+    setSavingDriver(true);
+    setDriverFormError('');
+
+    try {
+      const isEditing = !!editingDriver;
+      const method = isEditing ? 'PATCH' : 'POST';
+      
+      const payload = { ...driverForm };
+      if (isEditing) {
+        payload.id = editingDriver.id;
+        if (!payload.password) delete payload.password; // don't send empty password on edit
+      }
+
+      const res = await fetch('/api/drivers', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      const data = await res.json();
+      if (res.ok) {
+        fetchDrivers();
+        setShowDriverCrudModal(false);
+      } else {
+        setDriverFormError(data.error || `Failed to ${isEditing ? 'update' : 'create'} driver`);
+      }
+    } catch (err) {
+      setDriverFormError('Network error occurred');
+    } finally {
+      setSavingDriver(false);
+    }
+  };
+
   const handleLogout = async () => {
     await fetch('/api/admin/logout', { method: 'POST' });
     router.push('/admin/login');
   };
+
+  const handleChangePin = async (e) => {
+    e.preventDefault();
+    setIsChangingPin(true);
+    setPinMessage({ type: '', text: '' });
+
+    try {
+      const res = await fetch('/api/admin/change-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPin, newPin })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPinMessage({ type: 'success', text: 'PIN updated successfully!' });
+        setTimeout(() => {
+          setShowSecurityModal(false);
+          setCurrentPin('');
+          setNewPin('');
+          setPinMessage({ type: '', text: '' });
+        }, 2000);
+      } else {
+        setPinMessage({ type: 'error', text: data.error || 'Failed to update PIN' });
+      }
+    } catch (err) {
+      setPinMessage({ type: 'error', text: 'Network error' });
+    } finally {
+      setIsChangingPin(false);
+    }
+  };
+
+  const handleOpenAssignModal = (bookingId) => {
+    setSelectedBookingId(bookingId);
+    setShowDriverModal(true);
+  };
+
+  // Filter & Search Drivers
+  const filteredDrivers = drivers.filter(d => {
+    const matchesSearch = d.name?.toLowerCase().includes(driverSearchQuery.toLowerCase()) || 
+                          d.contact?.includes(driverSearchQuery);
+    const matchesStatus = driverStatusFilter === 'all' || d.status === driverStatusFilter;
+    const matchesSource = driverSourceFilter === 'all' || d.createdBy === driverSourceFilter;
+    return matchesSearch && matchesStatus && matchesSource;
+  });
+
+  const filteredBookings = bookings.filter(b => {
+    const matchesSearch = b.customerName?.toLowerCase().includes(bookingSearchQuery.toLowerCase()) || 
+                          b.customerPhone?.includes(bookingSearchQuery) ||
+                          b.pickup?.toLowerCase().includes(bookingSearchQuery.toLowerCase()) ||
+                          b.destination?.toLowerCase().includes(bookingSearchQuery.toLowerCase());
+    const matchesStatus = bookingStatusFilter === 'all' || b.status === bookingStatusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const approvedDrivers = drivers.filter(d => d.status === 'approved');
 
   return (
     <div className="pt-24 pb-12 relative min-h-[90vh]">
@@ -127,9 +450,14 @@ export default function AdminDashboard() {
                 <p className="text-xs text-green-400 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> System Online</p>
               </div>
             </div>
-            <button className="px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500 hover:text-white transition-all text-sm font-semibold" onClick={handleLogout}>
-              Terminate Session <i className="fa-solid fa-power-off ml-1"></i>
-            </button>
+            <div className="flex gap-3">
+              <button className="px-4 py-2 bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-500 hover:text-white transition-all text-sm font-semibold" onClick={() => setShowSecurityModal(true)}>
+                <i className="fa-solid fa-lock mr-2"></i> Security
+              </button>
+              <button className="px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500 hover:text-white transition-all text-sm font-semibold" onClick={handleLogout}>
+                Terminate Session <i className="fa-solid fa-power-off ml-1"></i>
+              </button>
+            </div>
           </div>
           
           <div className="flex flex-col md:flex-row min-h-[600px]">
@@ -154,20 +482,65 @@ export default function AdminDashboard() {
               >
                 <i className="fa-solid fa-id-card w-5 text-center"></i> Driver Directory
               </button>
+              <button 
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'fare' ? 'bg-taxi-yellow text-black shadow-[0_0_15px_rgba(255,215,0,0.3)]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                onClick={() => setActiveTab('fare')}
+              >
+                <i className="fa-solid fa-indian-rupee-sign w-5 text-center"></i> Fare Formula Settings
+              </button>
+              <button 
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'location-api' ? 'bg-taxi-yellow text-black shadow-[0_0_15px_rgba(255,215,0,0.3)]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                onClick={() => setActiveTab('location-api')}
+              >
+                <i className="fa-solid fa-map-location-dot w-5 text-center"></i> Location APIs
+              </button>
+              <button 
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'whatsapp' ? 'bg-[#25D366] text-black shadow-[0_0_15px_rgba(37,211,102,0.3)]' : 'text-gray-400 hover:bg-white/5 hover:text-[#25D366]'}`}
+                onClick={() => setActiveTab('whatsapp')}
+              >
+                <i className="fa-brands fa-whatsapp w-5 text-center text-lg"></i> WhatsApp Settings
+              </button>
             </div>
 
             {/* Main Content Area */}
             <div className="flex-1 p-6 lg:p-10">
               {activeTab === 'bookings' && (
                 <div className="animate-[fadeInUp_0.3s_ease]">
-                  <div className="flex justify-between items-center mb-8">
+                  <div className="flex justify-between items-center mb-6">
                     <div>
                       <h3 className="text-2xl font-bold text-white">Live Bookings</h3>
                       <p className="text-gray-400 text-sm">Monitor and manage ride requests</p>
                     </div>
-                    <div className="px-3 py-1 bg-taxi-yellow/10 text-taxi-yellow rounded-full text-xs font-mono border border-taxi-yellow/30">Total: {bookings.length}</div>
+                    <div className="px-3 py-1 bg-taxi-yellow/10 text-taxi-yellow rounded-full text-xs font-mono border border-taxi-yellow/30">Total: {filteredBookings.length}</div>
                   </div>
                   
+                  {/* Search and Filter */}
+                  <div className="flex flex-col md:flex-row gap-4 mb-6">
+                    <div className="relative flex-1">
+                      <i className="fa-solid fa-search absolute left-4 top-3.5 text-gray-500"></i>
+                      <input 
+                        type="text" 
+                        placeholder="Search customer, phone, or location..." 
+                        className="input-modern !pl-10"
+                        value={bookingSearchQuery}
+                        onChange={e => setBookingSearchQuery(e.target.value)}
+                      />
+                    </div>
+                    <div className="w-full md:w-64">
+                      <select 
+                        className="input-modern appearance-none"
+                        value={bookingStatusFilter}
+                        onChange={e => setBookingStatusFilter(e.target.value)}
+                      >
+                        <option value="all">All Statuses</option>
+                        <option value="pending">Unconfirmed (Pending)</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </div>
+                  </div>
+
                   <div className="overflow-x-auto rounded-xl border border-white/10">
                     <table className="w-full text-left text-sm text-gray-300">
                       <thead className="text-xs uppercase bg-black/50 text-gray-400">
@@ -187,51 +560,292 @@ export default function AdminDashboard() {
                               Loading Bookings...
                             </td>
                           </tr>
-                        ) : bookings.length === 0 ? (
+                        ) : filteredBookings.length === 0 ? (
                           <tr className="border-t border-white/5 bg-black/20">
                             <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
                               <i className="fa-solid fa-inbox text-3xl mb-3 opacity-50 block"></i>
-                              No bookings found in database
+                              No bookings found
                             </td>
                           </tr>
                         ) : (
-                          bookings.map(b => (
+                          filteredBookings.map(b => {
+                            const mapsLink = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(b.pickup)}&destination=${encodeURIComponent(b.destination)}`;
+                            const driverMsg = `New Booking Details:\nName: ${b.customerName}\nPhone: ${b.customerPhone}\nPickup: ${b.pickup}\nDropoff: ${b.destination}\nDate: ${b.date} at ${b.time}\nVehicle: ${b.vehicleType}\nPassengers: ${b.passengers}\nEstimated Fare: ₹${b.estimatedFare || 'N/A'}\n\nNavigation Link:\n${mapsLink}`;
+                            const customerMsg = `Hello ${b.customerName},\nYour ride from ${b.pickup} to ${b.destination} is Confirmed!\n\nDriver Details:\nName: ${b.assignedDriver?.name}\nPhone: ${b.assignedDriver?.contact}\nVehicle: ${b.assignedDriver?.carName} - ${b.assignedDriver?.carRegistration}\nEstimated Fare: ₹${b.estimatedFare || 'N/A'}\n\nThe driver will reach you before the scheduled time.\nThank you for choosing Raj Taxi!`;
+                            
+                            return (
                             <tr key={b.id} className="border-t border-white/5 bg-black/20 hover:bg-black/40 transition-colors">
                               <td className="px-6 py-4">
-                                <div className="font-bold text-white">{b.name}</div>
-                                <div className="text-xs text-gray-500">{b.phone}</div>
+                                <div className="font-bold text-white">{b.customerName}</div>
+                                <div className="text-xs text-gray-500">{b.customerPhone}</div>
                                 {b.notes && <div className="text-xs text-taxi-yellow mt-1">{b.notes}</div>}
                               </td>
                               <td className="px-6 py-4">
                                 <div className="text-xs text-green-400">P: {b.pickup}</div>
-                                <div className="text-xs text-red-400">D: {b.dropoff}</div>
+                                <div className="text-xs text-red-400">D: {b.destination}</div>
+                                {b.estimatedFare && <div className="text-xs text-taxi-yellow mt-1 font-semibold">Fare: ₹{b.estimatedFare}</div>}
                               </td>
                               <td className="px-6 py-4">
                                 <div>{b.date}</div>
                                 <div className="text-xs text-gray-500">{b.time}</div>
                               </td>
                               <td className="px-6 py-4">
-                                {b.status === 'pending' && <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full border border-yellow-500/30">Pending</span>}
+                                {b.status === 'pending' && <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full border border-yellow-500/30">Unconfirmed</span>}
                                 {b.status === 'confirmed' && <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full border border-green-500/30">Confirmed</span>}
                                 {b.status === 'completed' && <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-full border border-blue-500/30">Completed</span>}
                                 {b.status === 'cancelled' && <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded-full border border-red-500/30">Cancelled</span>}
+                                {b.assignedDriver && <div className="text-xs text-gray-400 mt-2">Driver: {b.assignedDriver.name}</div>}
                               </td>
-                              <td className="px-6 py-4 text-right">
-                                {b.status === 'pending' && (
-                                  <button onClick={() => updateBookingStatus(b.id, 'confirmed')} className="text-green-400 hover:text-green-300 text-sm font-semibold border border-green-500/30 px-2 py-1 rounded bg-green-500/10 mr-2">Confirm</button>
-                                )}
-                                {(b.status === 'pending' || b.status === 'confirmed') && (
-                                  <button onClick={() => updateBookingStatus(b.id, 'completed')} className="text-blue-400 hover:text-blue-300 text-sm font-semibold border border-blue-500/30 px-2 py-1 rounded bg-blue-500/10 mr-2">Complete</button>
-                                )}
-                                {b.status !== 'cancelled' && b.status !== 'completed' && (
-                                  <button onClick={() => updateBookingStatus(b.id, 'cancelled')} className="text-red-400 hover:text-red-300 text-sm font-semibold border border-red-500/30 px-2 py-1 rounded bg-red-500/10">Cancel</button>
-                                )}
+                              <td className="px-6 py-4">
+                                <div className="flex flex-wrap justify-end gap-2">
+                                  <a href={`https://wa.me/?text=${encodeURIComponent(driverMsg)}`} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300 text-sm font-semibold border border-green-500/30 px-2 py-1 rounded bg-green-500/10" title="Share with Driver">
+                                    <i className="fa-brands fa-whatsapp"></i> Driver
+                                  </a>
+                                  {b.status === 'confirmed' && (
+                                    <a href={`https://wa.me/${b.customerPhone.replace(/\D/g,'')}?text=${encodeURIComponent(customerMsg)}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 text-sm font-semibold border border-blue-500/30 px-2 py-1 rounded bg-blue-500/10" title="Confirm Customer">
+                                      <i className="fa-brands fa-whatsapp"></i> Customer
+                                    </a>
+                                  )}
+                                  {b.status === 'pending' && (
+                                    <button onClick={() => handleOpenAssignModal(b.id)} className="text-taxi-yellow hover:text-white text-sm font-semibold border border-yellow-500/30 px-2 py-1 rounded bg-yellow-500/10">Confirm Booking</button>
+                                  )}
+                                  {(b.status === 'pending' || b.status === 'confirmed') && (
+                                    <button onClick={() => updateBookingStatus(b.id, 'completed')} className="text-gray-400 hover:text-white text-sm font-semibold border border-white/30 px-2 py-1 rounded bg-white/10">Complete</button>
+                                  )}
+                                  {b.status !== 'cancelled' && b.status !== 'completed' && (
+                                    <button onClick={() => updateBookingStatus(b.id, 'cancelled')} className="text-red-400 hover:text-red-300 text-sm font-semibold border border-red-500/30 px-2 py-1 rounded bg-red-500/10">Cancel</button>
+                                  )}
+                                </div>
                               </td>
                             </tr>
-                          ))
+                          )})
                         )}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'fare' && (
+                <div className="animate-[fadeInUp_0.3s_ease]">
+                  <h3 className="text-2xl font-bold text-white mb-2">Fare Formula Settings</h3>
+                  <p className="text-gray-400 text-sm mb-8">Set the base pricing and kilometer-wise slab rates.</p>
+
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    <div className="glass-card p-6 border-white/5 bg-black/20 rounded-xl border border-white/10">
+                      <h4 className="text-taxi-yellow font-semibold mb-4 border-b border-white/10 pb-2"><i className="fa-solid fa-money-bill-wave mr-2"></i> Fixed Costs</h4>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-xs text-gray-400 mb-1 block">App Cost (₹)</label>
+                          <input type="number" className="input-modern bg-black/30" value={fareSettings.appCost} onChange={(e) => setFareSettings({...fareSettings, appCost: parseFloat(e.target.value) || 0})} />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-400 mb-1 block">Driver Cost (₹)</label>
+                          <input type="number" className="input-modern bg-black/30" value={fareSettings.driverCost} onChange={(e) => setFareSettings({...fareSettings, driverCost: parseFloat(e.target.value) || 0})} />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-400 mb-1 block">Base Fare (₹)</label>
+                          <input type="number" className="input-modern bg-black/30" value={fareSettings.baseFare} onChange={(e) => setFareSettings({...fareSettings, baseFare: parseFloat(e.target.value) || 0})} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="glass-card p-6 border-white/5 bg-black/20 rounded-xl border border-white/10">
+                      <h4 className="text-taxi-yellow font-semibold mb-4 border-b border-white/10 pb-2 flex justify-between items-center">
+                        <span><i className="fa-solid fa-road mr-2"></i> Kilometer Tiers (Slab Rate)</span>
+                        <button onClick={handleAddTier} className="text-xs bg-taxi-yellow/20 text-taxi-yellow px-2 py-1 rounded hover:bg-taxi-yellow/40">+ Add Tier</button>
+                      </h4>
+                      <div className="space-y-4">
+                        {(() => {
+                          let tiers = [];
+                          try { tiers = JSON.parse(fareSettings.distanceTiers); } catch(e){}
+                          return tiers.map((tier, idx) => (
+                            <div key={idx} className="flex gap-2 items-center bg-black/30 p-2 rounded border border-white/5">
+                              <div className="flex-1">
+                                <label className="text-[10px] text-gray-400">Min KM</label>
+                                <input type="number" className="w-full bg-black/50 text-white text-sm p-1 rounded border border-white/10" value={tier.min} onChange={e => handleUpdateTier(idx, 'min', e.target.value)} />
+                              </div>
+                              <div className="flex-1">
+                                <label className="text-[10px] text-gray-400">Max KM</label>
+                                <input type="number" className="w-full bg-black/50 text-white text-sm p-1 rounded border border-white/10" value={tier.max} onChange={e => handleUpdateTier(idx, 'max', e.target.value)} />
+                              </div>
+                              <div className="flex-1">
+                                <label className="text-[10px] text-gray-400">Rate/KM (₹)</label>
+                                <input type="number" className="w-full bg-black/50 text-white text-sm p-1 rounded border border-white/10" value={tier.rate} onChange={e => handleUpdateTier(idx, 'rate', e.target.value)} />
+                              </div>
+                              <button onClick={() => handleRemoveTier(idx)} className="text-red-400 hover:text-red-300 mt-4"><i className="fa-solid fa-trash"></i></button>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-8 flex justify-end">
+                    <button 
+                      onClick={handleSaveFareSettings}
+                      disabled={savingFare}
+                      className="btn-primary"
+                    >
+                      {savingFare ? <><i className="fa-solid fa-circle-notch fa-spin mr-2"></i> Saving...</> : <><i className="fa-solid fa-save mr-2"></i> Save Fare Formula</>}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'location-api' && (
+                <div className="animate-[fadeInUp_0.3s_ease] space-y-6">
+                  <div>
+                    <h3 className="text-2xl font-bold text-white mb-2">Location APIs</h3>
+                    <p className="text-gray-400 text-sm">Manage Geocoding API keys (LocationIQ, Mapbox, Nominatim)</p>
+                  </div>
+
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden group">
+                    <h4 className="text-lg font-bold text-taxi-yellow mb-4">Add New Location API</h4>
+                    <div className="flex flex-col md:flex-row gap-4 mb-4">
+                      <select 
+                        className="input-modern bg-black/30 md:w-1/3"
+                        value={newApi.provider}
+                        onChange={(e) => setNewApi({...newApi, provider: e.target.value})}
+                      >
+                        <option value="locationiq">LocationIQ</option>
+                        <option value="mapbox">Mapbox</option>
+                        <option value="nominatim">Nominatim (Free, No Key required)</option>
+                      </select>
+                      <input 
+                        type="text" 
+                        placeholder={newApi.provider === 'nominatim' ? "API Key not needed" : "Enter API Key"} 
+                        className="input-modern bg-black/30 flex-1"
+                        value={newApi.apiKey}
+                        disabled={newApi.provider === 'nominatim'}
+                        onChange={(e) => setNewApi({...newApi, apiKey: e.target.value})}
+                      />
+                      <button onClick={handleAddLocationApi} className="btn-primary whitespace-nowrap">
+                        <i className="fa-solid fa-plus mr-2"></i> Add API
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                    <h4 className="text-lg font-bold text-white mb-4">Saved APIs</h4>
+                    {locationApis.length === 0 ? (
+                      <p className="text-gray-400 text-sm">No Location APIs added yet. Using default Nominatim.</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm text-gray-300">
+                          <thead className="text-xs uppercase bg-white/5 text-gray-400">
+                            <tr>
+                              <th className="px-4 py-3 rounded-tl-lg">Provider</th>
+                              <th className="px-4 py-3">API Key</th>
+                              <th className="px-4 py-3">Status</th>
+                              <th className="px-4 py-3 rounded-tr-lg text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {locationApis.map((api) => (
+                              <tr key={api.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                <td className="px-4 py-4 font-medium capitalize">{api.provider}</td>
+                                <td className="px-4 py-4 font-mono text-xs">{api.apiKey ? api.apiKey.substring(0, 8) + '...' + api.apiKey.substring(api.apiKey.length - 4) : 'N/A'}</td>
+                                <td className="px-4 py-4">
+                                  {api.isActive ? (
+                                    <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-md text-xs font-bold border border-green-500/30">ACTIVE</span>
+                                  ) : (
+                                    <span className="px-2 py-1 bg-gray-500/20 text-gray-400 rounded-md text-xs font-bold border border-gray-500/30">INACTIVE</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-4 text-right flex justify-end gap-2">
+                                  {!api.isActive && (
+                                    <button 
+                                      onClick={() => handleSetActiveLocationApi(api.id)}
+                                      className="px-3 py-1 bg-taxi-yellow/20 text-taxi-yellow hover:bg-taxi-yellow/30 rounded-lg text-xs font-bold transition-colors"
+                                    >
+                                      Set Active
+                                    </button>
+                                  )}
+                                  <button 
+                                    onClick={() => handleDeleteLocationApi(api.id)}
+                                    className="px-3 py-1 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg text-xs font-bold transition-colors"
+                                  >
+                                    <i className="fa-solid fa-trash"></i>
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'whatsapp' && (
+                <div className="animate-[fadeInUp_0.3s_ease] space-y-6 max-w-3xl">
+                  <div>
+                    <h3 className="text-2xl font-bold text-white mb-2">WhatsApp Automation</h3>
+                    <p className="text-gray-400 text-sm">Manage your Baileys WhatsApp server connection</p>
+                  </div>
+
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden">
+                    <div className="flex justify-between items-start mb-6">
+                      <h4 className="text-lg font-bold text-[#25D366] flex items-center gap-2">
+                        <i className="fa-brands fa-whatsapp text-2xl"></i> Server Status
+                      </h4>
+                      <div className="flex gap-3 items-center">
+                        <button onClick={fetchWaStatus} className="p-2 text-gray-400 hover:text-white transition-colors" title="Refresh Status">
+                          <i className={`fa-solid fa-rotate-right ${waStatus.loading ? 'animate-spin text-taxi-yellow' : ''}`}></i>
+                        </button>
+                        {waStatus.isConnected ? (
+                          <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm font-bold border border-green-500/30 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> ONLINE
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 bg-red-500/20 text-red-400 rounded-lg text-sm font-bold border border-red-500/30 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-red-500"></span> OFFLINE
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {waStatus.isConnected ? (
+                      <div className="text-center p-8 bg-black/30 rounded-xl border border-green-500/20">
+                        <i className="fa-solid fa-check-circle text-5xl text-green-500 mb-4"></i>
+                        <h5 className="text-xl font-semibold text-white mb-2">WhatsApp is Connected!</h5>
+                        <p className="text-gray-400 text-sm mb-6">Your server is running and ready to send automated notifications.</p>
+                        <button onClick={handleWaLogout} disabled={waStatus.loading} className="btn-primary !bg-red-500 hover:!bg-red-600 px-6 py-2">
+                          <i className="fa-solid fa-power-off mr-2"></i> Disconnect / Logout
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-center p-8 bg-black/30 rounded-xl border border-white/5">
+                        {waStatus.loading ? (
+                          <div className="flex flex-col items-center justify-center py-10">
+                            <div className="w-12 h-12 border-4 border-[#25D366]/30 border-t-[#25D366] rounded-full animate-spin mb-4"></div>
+                            <p className="text-gray-400 text-sm animate-pulse">Waking up WhatsApp server... (May take 30s)</p>
+                          </div>
+                        ) : waStatus.hasQR && waStatus.qr ? (
+                          <div className="flex flex-col items-center">
+                            <h5 className="text-lg font-semibold text-white mb-2">Scan QR Code</h5>
+                            <p className="text-gray-400 text-sm mb-6">Open WhatsApp on your phone {"->"} Linked Devices {"->"} Scan</p>
+                            <div className="bg-white p-4 rounded-xl mb-6 shadow-[0_0_30px_rgba(37,211,102,0.2)]">
+                              <img src={waStatus.qr} alt="WhatsApp QR Code" className="w-64 h-64" />
+                            </div>
+                            <p className="text-xs text-yellow-500 bg-yellow-500/10 px-4 py-2 rounded-lg border border-yellow-500/20">
+                              <i className="fa-solid fa-circle-info mr-1"></i> QR Code changes every few seconds. If it fails, refresh the status.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center py-6">
+                            <i className="fa-brands fa-whatsapp text-6xl text-gray-600 mb-4"></i>
+                            <h5 className="text-lg font-semibold text-white mb-2">No QR Code Available</h5>
+                            <p className="text-gray-400 text-sm mb-6">Ensure the Render server is running and API keys match.</p>
+                            <button onClick={fetchWaStatus} className="btn-primary !bg-[#25D366] hover:!bg-[#128C7E] px-6 py-2">
+                              <i className="fa-solid fa-rotate-right mr-2"></i> Try Again
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -291,12 +905,52 @@ export default function AdminDashboard() {
 
               {activeTab === 'drivers' && (
                 <div className="animate-[fadeInUp_0.3s_ease]">
-                  <div className="flex justify-between items-center mb-8">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                     <div>
-                      <h3 className="text-2xl font-bold text-white">Driver Management</h3>
-                      <p className="text-gray-400 text-sm">Review driver applications and active drivers</p>
+                      <h3 className="text-2xl font-bold text-white">Driver Directory</h3>
+                      <p className="text-gray-400 text-sm">Manage drivers, approvals, and vehicle data</p>
                     </div>
-                    <div className="px-3 py-1 bg-taxi-yellow/10 text-taxi-yellow rounded-full text-xs font-mono border border-taxi-yellow/30">Total: {drivers.length}</div>
+                    
+                    <button onClick={() => handleOpenDriverCrud()} className="btn-primary py-2 px-4 text-sm whitespace-nowrap">
+                      <i className="fa-solid fa-plus mr-2"></i> Add New Driver
+                    </button>
+                  </div>
+
+                  {/* Search and Filter */}
+                  <div className="flex flex-col md:flex-row gap-4 mb-6">
+                    <div className="relative flex-1">
+                      <i className="fa-solid fa-search absolute left-4 top-3.5 text-gray-500"></i>
+                      <input 
+                        type="text" 
+                        placeholder="Search by name or phone..." 
+                        className="input-modern !pl-10"
+                        value={driverSearchQuery}
+                        onChange={e => setDriverSearchQuery(e.target.value)}
+                      />
+                    </div>
+                    <div className="w-full md:w-48">
+                      <select 
+                        className="input-modern appearance-none"
+                        value={driverSourceFilter}
+                        onChange={e => setDriverSourceFilter(e.target.value)}
+                      >
+                        <option value="all">All Sources</option>
+                        <option value="admin">Admin Add</option>
+                        <option value="driver">Web App</option>
+                      </select>
+                    </div>
+                    <div className="w-full md:w-48">
+                      <select 
+                        className="input-modern appearance-none"
+                        value={driverStatusFilter}
+                        onChange={e => setDriverStatusFilter(e.target.value)}
+                      >
+                        <option value="all">All Statuses</option>
+                        <option value="approved">Approved</option>
+                        <option value="pending">Pending Review</option>
+                        <option value="rejected">Cancelled (Rejected)</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div className="overflow-x-auto rounded-xl border border-white/10">
@@ -305,7 +959,6 @@ export default function AdminDashboard() {
                         <tr>
                           <th className="px-6 py-4 font-medium">Driver Profile</th>
                           <th className="px-6 py-4 font-medium">Vehicle Info</th>
-                          <th className="px-6 py-4 font-medium">Experience</th>
                           <th className="px-6 py-4 font-medium">Status</th>
                           <th className="px-6 py-4 font-medium text-right">Action</th>
                         </tr>
@@ -313,50 +966,84 @@ export default function AdminDashboard() {
                       <tbody>
                         {loadingDrivers ? (
                           <tr className="border-t border-white/5 bg-black/20">
-                            <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
+                            <td colSpan="4" className="px-6 py-12 text-center text-gray-500">
                               <i className="fa-solid fa-circle-notch fa-spin text-3xl mb-3 opacity-50 block"></i>
                               Loading Drivers...
                             </td>
                           </tr>
-                        ) : drivers.length === 0 ? (
+                        ) : filteredDrivers.length === 0 ? (
                           <tr className="border-t border-white/5 bg-black/20">
-                            <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
+                            <td colSpan="4" className="px-6 py-12 text-center text-gray-500">
                               <i className="fa-solid fa-users-slash text-3xl mb-3 opacity-50 block"></i>
-                              No drivers found
+                              No drivers found matching criteria
                             </td>
                           </tr>
                         ) : (
-                          drivers.map(d => (
+                          filteredDrivers.map(d => (
                             <tr key={d.id} className="border-t border-white/5 bg-black/20 hover:bg-black/40 transition-colors">
                               <td className="px-6 py-4">
-                                <div className="font-bold text-white">{d.name}</div>
-                                <div className="text-xs text-gray-500">{d.phone}</div>
+                                <div className="flex items-center gap-3">
+                                  {d.selfieUrl ? (
+                                    <img src={d.selfieUrl} alt="Selfie" className="w-10 h-10 rounded-full object-cover border border-taxi-yellow/30" />
+                                  ) : (
+                                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-gray-500">
+                                      <i className="fa-solid fa-user"></i>
+                                    </div>
+                                  )}
+                                  <div>
+                                    <div className="font-bold text-white flex items-center gap-2">
+                                      {d.name}
+                                      {d.createdBy === 'admin' ? (
+                                        <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded border border-blue-500/30">Admin Add</span>
+                                      ) : (
+                                        <span className="text-[10px] px-1.5 py-0.5 bg-purple-500/20 text-purple-400 rounded border border-purple-500/30">Web App</span>
+                                      )}
+                                    </div>
+                                    <div className="text-xs text-gray-500">{d.contact}</div>
+                                  </div>
+                                </div>
                               </td>
                               <td className="px-6 py-4">
-                                <div className="text-sm">{d.vehicleModel}</div>
-                                <div className="text-xs text-taxi-yellow">{d.vehicleNo}</div>
+                                <div className="text-sm">{d.carName}</div>
+                                <div className="text-xs text-taxi-yellow">{d.carRegistration}</div>
                               </td>
                               <td className="px-6 py-4">
-                                <div>{d.experience} Years</div>
-                              </td>
-                              <td className="px-6 py-4">
-                                {d.status === 'pending' && <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full border border-yellow-500/30">Pending Review</span>}
-                                {d.status === 'approved' && <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full border border-green-500/30">Approved / Active</span>}
-                                {d.status === 'rejected' && <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded-full border border-red-500/30">Rejected</span>}
+                                {d.status === 'pending' && <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full border border-yellow-500/30">Pending</span>}
+                                {d.status === 'approved' && <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full border border-green-500/30">Approved</span>}
+                                {d.status === 'rejected' && <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded-full border border-red-500/30">Cancelled</span>}
                               </td>
                               <td className="px-6 py-4 text-right">
+                                {/* Approve / Cancel Actions */}
                                 {d.status === 'pending' && (
                                   <>
-                                    <button onClick={() => updateDriverStatus(d.id, 'approved')} className="text-green-400 hover:text-green-300 text-sm font-semibold border border-green-500/30 px-2 py-1 rounded bg-green-500/10 mr-2">Approve</button>
-                                    <button onClick={() => updateDriverStatus(d.id, 'rejected')} className="text-red-400 hover:text-red-300 text-sm font-semibold border border-red-500/30 px-2 py-1 rounded bg-red-500/10">Reject</button>
+                                    <button onClick={() => updateDriverStatus(d.id, 'approved')} className="text-green-400 hover:text-green-300 text-xs font-semibold border border-green-500/30 px-2 py-1 rounded bg-green-500/10 mr-2">Approve</button>
+                                    <button onClick={() => updateDriverStatus(d.id, 'rejected')} className="text-red-400 hover:text-red-300 text-xs font-semibold border border-red-500/30 px-2 py-1 rounded bg-red-500/10 mr-2">Cancel</button>
                                   </>
                                 )}
                                 {d.status === 'approved' && (
-                                  <button onClick={() => updateDriverStatus(d.id, 'rejected')} className="text-red-400 hover:text-red-300 text-sm font-semibold border border-red-500/30 px-2 py-1 rounded bg-red-500/10">Suspend</button>
+                                  <button onClick={() => updateDriverStatus(d.id, 'rejected')} className="text-red-400 hover:text-red-300 text-xs font-semibold border border-red-500/30 px-2 py-1 rounded bg-red-500/10 mb-2 mr-2">Cancel</button>
                                 )}
                                 {d.status === 'rejected' && (
-                                  <button onClick={() => updateDriverStatus(d.id, 'approved')} className="text-green-400 hover:text-green-300 text-sm font-semibold border border-green-500/30 px-2 py-1 rounded bg-green-500/10">Re-Activate</button>
+                                  <button onClick={() => updateDriverStatus(d.id, 'approved')} className="text-green-400 hover:text-green-300 text-xs font-semibold border border-green-500/30 px-2 py-1 rounded bg-green-500/10 mb-2 mr-2">Approve</button>
                                 )}
+
+                                {/* View Docs Action */}
+                                <button onClick={() => { setSelectedDriverForDocs(d); setShowDocsModal(true); }} className="text-taxi-yellow hover:text-white text-xs font-semibold border border-yellow-500/30 px-2 py-1 rounded bg-yellow-500/10 mb-2 mr-2">
+                                  <i className="fa-solid fa-file-invoice"></i> Docs
+                                </button>
+
+                                {/* Dashboard Action */}
+                                <a href={`/driver/dashboard?driverId=${d.id}`} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 text-xs font-semibold border border-purple-500/30 px-2 py-1 rounded bg-purple-500/10 mb-2 mr-2 inline-block">
+                                  <i className="fa-solid fa-chart-line"></i> Dashboard
+                                </a>
+
+                                {/* Edit / Delete Actions */}
+                                <button onClick={() => handleOpenDriverCrud(d)} className="text-blue-400 hover:text-blue-300 text-xs font-semibold border border-blue-500/30 px-2 py-1 rounded bg-blue-500/10 mr-2 mb-2">
+                                  <i className="fa-solid fa-pen"></i> Edit
+                                </button>
+                                <button onClick={() => handleDeleteDriver(d.id)} className="text-gray-400 hover:text-white text-xs font-semibold border border-white/30 px-2 py-1 rounded bg-white/10">
+                                  <i className="fa-solid fa-trash"></i>
+                                </button>
                               </td>
                             </tr>
                           ))
@@ -371,6 +1058,221 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Driver Add/Edit Modal */}
+      {showDriverCrudModal && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="glass-panel w-full max-w-2xl rounded-2xl p-6 border border-white/10 my-8">
+            <h3 className="text-xl font-bold text-white mb-2">{editingDriver ? 'Edit Driver' : 'Add New Driver'}</h3>
+            <p className="text-sm text-gray-400 mb-6">Fill in all required driver and vehicle information.</p>
+            
+            {driverFormError && <div className="text-sm mb-4 p-3 rounded bg-red-500/10 text-red-400 border border-red-500/30">{driverFormError}</div>}
+            
+            <form onSubmit={handleSaveDriver} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="form-label">Full Name *</label>
+                  <input type="text" className="input-modern" required value={driverForm.name} onChange={e => setDriverForm({...driverForm, name: e.target.value})} />
+                </div>
+                <div>
+                  <label className="form-label">Contact / Login ID *</label>
+                  <input type="text" className="input-modern" required value={driverForm.contact} onChange={e => setDriverForm({...driverForm, contact: e.target.value})} />
+                </div>
+                <div>
+                  <label className="form-label">Address *</label>
+                  <input type="text" className="input-modern" required value={driverForm.address} onChange={e => setDriverForm({...driverForm, address: e.target.value})} />
+                </div>
+                <div>
+                  <label className="form-label">Password {editingDriver && '(Leave empty to keep current)'}</label>
+                  <div className="relative">
+                    <input type={showDriverPassword ? "text" : "password"} className="input-modern pr-10" value={driverForm.password} onChange={e => setDriverForm({...driverForm, password: e.target.value})} required={!editingDriver} />
+                    <button type="button" onClick={() => setShowDriverPassword(!showDriverPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-taxi-yellow focus:outline-none">
+                      <i className={`fa-solid ${showDriverPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="form-label">Aadhar Number *</label>
+                  <input type="text" className="input-modern" required value={driverForm.aadharNumber} onChange={e => setDriverForm({...driverForm, aadharNumber: e.target.value})} />
+                </div>
+                <div>
+                  <label className="form-label">License Number *</label>
+                  <input type="text" className="input-modern" required value={driverForm.licenseNumber} onChange={e => setDriverForm({...driverForm, licenseNumber: e.target.value})} />
+                </div>
+                <div>
+                  <label className="form-label">Vehicle Name *</label>
+                  <input type="text" className="input-modern" required value={driverForm.carName} onChange={e => setDriverForm({...driverForm, carName: e.target.value})} placeholder="e.g. Maruti Swift Dzire" />
+                </div>
+                <div>
+                  <label className="form-label">Vehicle Registration No. *</label>
+                  <input type="text" className="input-modern" required value={driverForm.carRegistration} onChange={e => setDriverForm({...driverForm, carRegistration: e.target.value})} placeholder="e.g. PB08AB1234" />
+                </div>
+                <div>
+                  <label className="form-label">Chassis Number *</label>
+                  <input type="text" className="input-modern" required value={driverForm.chassisNumber} onChange={e => setDriverForm({...driverForm, chassisNumber: e.target.value})} />
+                </div>
+                <div>
+                  <label className="form-label">Status</label>
+                  <select className="input-modern appearance-none" value={driverForm.status} onChange={e => setDriverForm({...driverForm, status: e.target.value})}>
+                    <option value="approved">Approved</option>
+                    <option value="pending">Pending</option>
+                    <option value="rejected">Cancelled (Rejected)</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="flex gap-4 mt-6 pt-4 border-t border-white/10">
+                <button type="button" onClick={() => setShowDriverCrudModal(false)} className="w-1/2 btn-outline py-2">Cancel</button>
+                <button type="submit" disabled={savingDriver} className="w-1/2 btn-primary py-2">{savingDriver ? 'Saving...' : 'Save Driver'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Security Modal */}
+      {showSecurityModal && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="glass-panel w-full max-w-md rounded-2xl p-6 border border-white/10">
+            <h3 className="text-xl font-bold text-white mb-4"><i className="fa-solid fa-lock text-taxi-yellow mr-2"></i> Security Settings</h3>
+            <p className="text-sm text-gray-400 mb-6">Change your 6-digit Secret PIN</p>
+            
+            {pinMessage.text && <div className={`text-sm mb-4 p-3 rounded ${pinMessage.type === 'error' ? 'bg-red-500/10 text-red-400 border border-red-500/30' : 'bg-green-500/10 text-green-400 border border-green-500/30'}`}>{pinMessage.text}</div>}
+            
+            <form onSubmit={handleChangePin} className="space-y-4">
+              <div>
+                <label className="form-label">Current PIN</label>
+                <div className="relative">
+                  <input type={showCurrentPin ? "text" : "password"} maxLength={6} className="input-modern pr-10" value={currentPin} onChange={e => setCurrentPin(e.target.value)} required placeholder="Enter current PIN" />
+                  <button type="button" onClick={() => setShowCurrentPin(!showCurrentPin)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-taxi-yellow focus:outline-none">
+                    <i className={`fa-solid ${showCurrentPin ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="form-label">New PIN</label>
+                <div className="relative">
+                  <input type={showNewPin ? "text" : "password"} maxLength={6} className="input-modern pr-10" value={newPin} onChange={e => setNewPin(e.target.value)} required placeholder="Enter new 6-digit PIN" />
+                  <button type="button" onClick={() => setShowNewPin(!showNewPin)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-taxi-yellow focus:outline-none">
+                    <i className={`fa-solid ${showNewPin ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex gap-4 mt-6">
+                <button type="button" onClick={() => setShowSecurityModal(false)} className="w-1/2 btn-outline py-2">Cancel</button>
+                <button type="submit" disabled={isChangingPin} className="w-1/2 btn-primary py-2">{isChangingPin ? 'Updating...' : 'Update PIN'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Driver Assignment Modal */}
+      {showDriverModal && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="glass-panel w-full max-w-md rounded-2xl p-6 border border-white/10">
+            <h3 className="text-xl font-bold text-white mb-2">Assign Driver</h3>
+            <p className="text-sm text-gray-400 mb-6">Select an approved driver for this booking.</p>
+            
+            {approvedDrivers.length === 0 ? (
+              <div className="text-yellow-400 bg-yellow-500/10 p-4 border border-yellow-500/30 rounded-lg text-sm mb-6">
+                No approved drivers available. Please approve drivers from the Driver Directory first.
+              </div>
+            ) : (
+              <div className="space-y-4 mb-6 max-h-60 overflow-y-auto pr-2">
+                {approvedDrivers.map(d => (
+                  <label key={d.id} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${selectedDriverId === d.id ? 'border-taxi-yellow bg-taxi-yellow/10' : 'border-white/10 bg-black/30 hover:bg-white/5'}`}>
+                    <input type="radio" name="driverSelect" value={d.id} checked={selectedDriverId === d.id} onChange={() => setSelectedDriverId(d.id)} className="text-taxi-yellow focus:ring-taxi-yellow" />
+                    <div>
+                      <div className="font-semibold text-white">{d.name}</div>
+                      <div className="text-xs text-gray-400">{d.carName} - {d.carRegistration}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+            
+            <div className="flex gap-4">
+              <button type="button" onClick={() => { setShowDriverModal(false); setSelectedBookingId(null); setSelectedDriverId(''); }} className="w-1/2 btn-outline py-2">Cancel</button>
+              <button 
+                type="button" 
+                disabled={!selectedDriverId} 
+                onClick={() => updateBookingStatus(selectedBookingId, 'confirmed', selectedDriverId)} 
+                className="w-1/2 btn-primary py-2 disabled:opacity-50"
+              >
+                Confirm Booking
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Documents Modal */}
+      {showDocsModal && selectedDriverForDocs && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="glass-panel w-full max-w-4xl rounded-2xl p-6 border border-white/10 my-8">
+            <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+              <div>
+                <h3 className="text-2xl font-bold text-white">Documents: {selectedDriverForDocs.name}</h3>
+                <p className="text-sm text-taxi-yellow mt-1">Contact: {selectedDriverForDocs.contact} | Vehicle: {selectedDriverForDocs.carRegistration}</p>
+              </div>
+              <button onClick={() => { setShowDocsModal(false); setSelectedDriverForDocs(null); }} className="text-gray-400 hover:text-white text-2xl">
+                <i className="fa-solid fa-times"></i>
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="bg-black/40 rounded-xl p-3 border border-white/5">
+                <h4 className="text-xs text-gray-400 uppercase tracking-wider mb-2 font-semibold">Selfie / Photo</h4>
+                {selectedDriverForDocs.selfieUrl ? (
+                  <img src={selectedDriverForDocs.selfieUrl} alt="Selfie" className="w-full h-48 object-contain bg-black/50 rounded-lg" />
+                ) : <div className="w-full h-48 flex items-center justify-center text-sm text-gray-600 bg-black/20 rounded-lg">No Document</div>}
+              </div>
+
+              <div className="bg-black/40 rounded-xl p-3 border border-white/5">
+                <h4 className="text-xs text-gray-400 uppercase tracking-wider mb-2 font-semibold">Aadhar (Front)</h4>
+                {selectedDriverForDocs.aadharFrontUrl ? (
+                  <img src={selectedDriverForDocs.aadharFrontUrl} alt="Aadhar Front" className="w-full h-48 object-contain bg-black/50 rounded-lg" />
+                ) : <div className="w-full h-48 flex items-center justify-center text-sm text-gray-600 bg-black/20 rounded-lg">No Document</div>}
+              </div>
+
+              <div className="bg-black/40 rounded-xl p-3 border border-white/5">
+                <h4 className="text-xs text-gray-400 uppercase tracking-wider mb-2 font-semibold">Aadhar (Back)</h4>
+                {selectedDriverForDocs.aadharBackUrl ? (
+                  <img src={selectedDriverForDocs.aadharBackUrl} alt="Aadhar Back" className="w-full h-48 object-contain bg-black/50 rounded-lg" />
+                ) : <div className="w-full h-48 flex items-center justify-center text-sm text-gray-600 bg-black/20 rounded-lg">No Document</div>}
+              </div>
+
+              <div className="bg-black/40 rounded-xl p-3 border border-white/5">
+                <h4 className="text-xs text-gray-400 uppercase tracking-wider mb-2 font-semibold">Driving License</h4>
+                {selectedDriverForDocs.drivingLicenseUrl ? (
+                  <img src={selectedDriverForDocs.drivingLicenseUrl} alt="DL" className="w-full h-48 object-contain bg-black/50 rounded-lg" />
+                ) : <div className="w-full h-48 flex items-center justify-center text-sm text-gray-600 bg-black/20 rounded-lg">No Document</div>}
+              </div>
+
+              <div className="bg-black/40 rounded-xl p-3 border border-white/5">
+                <h4 className="text-xs text-gray-400 uppercase tracking-wider mb-2 font-semibold">Car Registration (RC)</h4>
+                {selectedDriverForDocs.carRegistrationDocUrl ? (
+                  <img src={selectedDriverForDocs.carRegistrationDocUrl} alt="RC" className="w-full h-48 object-contain bg-black/50 rounded-lg" />
+                ) : <div className="w-full h-48 flex items-center justify-center text-sm text-gray-600 bg-black/20 rounded-lg">No Document</div>}
+              </div>
+
+              <div className="bg-black/40 rounded-xl p-3 border border-white/5">
+                <h4 className="text-xs text-gray-400 uppercase tracking-wider mb-2 font-semibold">Police Verification</h4>
+                {selectedDriverForDocs.policeVerificationUrl ? (
+                  <img src={selectedDriverForDocs.policeVerificationUrl} alt="Police Verf" className="w-full h-48 object-contain bg-black/50 rounded-lg" />
+                ) : <div className="w-full h-48 flex items-center justify-center text-sm text-gray-600 bg-black/20 rounded-lg">No Document</div>}
+              </div>
+            </div>
+            
+            <div className="mt-8 flex justify-end">
+              <button onClick={() => { setShowDocsModal(false); setSelectedDriverForDocs(null); }} className="btn-primary px-8 py-2">Close Viewer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
