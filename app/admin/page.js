@@ -49,7 +49,13 @@ export default function AdminDashboard() {
 
   const [bookingSearchQuery, setBookingSearchQuery] = useState('');
   const [bookingStatusFilter, setBookingStatusFilter] = useState('all');
-  const [bookingDateFilter, setBookingDateFilter] = useState('');
+  const [bookingDateFilter, setBookingDateFilter] = useState(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  });
   const [selectedBookings, setSelectedBookings] = useState([]);
 
   const router = useRouter();
@@ -635,9 +641,20 @@ export default function AdminDashboard() {
                         <input 
                           type="date" 
                           className="input-modern px-4 py-2 text-sm text-gray-300"
+                          style={{ colorScheme: 'dark' }}
+                          onClick={(e) => e.target.showPicker && e.target.showPicker()}
                           value={bookingDateFilter}
                           onChange={e => setBookingDateFilter(e.target.value)}
                         />
+                        {bookingDateFilter && (
+                          <button 
+                            onClick={() => setBookingDateFilter('')} 
+                            className="absolute right-10 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                            title="Clear Date"
+                          >
+                            <i className="fa-solid fa-times"></i>
+                          </button>
+                        )}
                       </div>
                       <div className="relative">
                         <i className="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
