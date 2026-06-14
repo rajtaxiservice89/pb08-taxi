@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('bookings');
@@ -347,12 +349,32 @@ export default function AdminDashboard() {
 
   const updateDriverStatus = async (id, status) => {
     try {
+      const driver = drivers.find(d => d.id === id);
+      
       const res = await fetch('/api/drivers', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, status })
       });
-      if (res.ok) fetchDrivers();
+      if (res.ok) {
+        if (status === 'approved' && waAutoMode && driver) {
+          const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://pb08taxi.vercel.app';
+          const msg = `🚗 *Welcome to PB08 Taxi!* 🚗\n\nHi ${driver.name}, your driver profile has been *APPROVED*.\n\nYou can now log in to your Driver Dashboard to receive bookings.\n\n*Login URL:* ${appUrl}/driver/login\n*Login ID:* ${driver.contact}\n*Password:* ${driver.password || 'Please contact Admin'}\n\nDrive safe!`;
+          
+          await fetch('/api/admin/whatsapp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'send',
+              phone: driver.contact,
+              message: msg,
+              bookingId: id,
+              targetType: 'driver_approval'
+            })
+          });
+        }
+        fetchDrivers();
+      }
     } catch (e) { console.error(e); }
   };
 
@@ -372,13 +394,106 @@ export default function AdminDashboard() {
     } catch (e) { console.error(e); }
   };
 
+  const compressImage = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          resolve(compressedBase64);
+        };
+        img.onerror = (error) => reject(error);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const handleDocUpdate = async (e, driverId, fieldName) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const compressedString = await compressImage(file);
+      const res = await fetch('/api/drivers/docs', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ driverId, fieldName, fileData: compressedString })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedDriverForDocs(data.driver); // update modal state
+        fetchDrivers(); // update background list
+        alert('Document updated successfully!');
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to update document');
+      }
+    } catch (error) {
+      console.error("Doc update error:", error);
+      alert("Failed to process image.");
+    }
+  };
+
+  const handleDownloadZip = async () => {
+    if (!selectedDriverForDocs) return;
+    
+    const zip = new JSZip();
+    const folderName = `Driver_${selectedDriverForDocs.name.replace(/\s+/g, '_')}_Docs`;
+    const folder = zip.folder(folderName);
+    
+    // Add text file with details
+    const detailsText = `Name: ${selectedDriverForDocs.name}\nContact: ${selectedDriverForDocs.contact}\nPassword: ${selectedDriverForDocs.password || 'Not Set'}\nAddress: ${selectedDriverForDocs.address}\nAadhar No: ${selectedDriverForDocs.aadharNumber}\nLicense No: ${selectedDriverForDocs.licenseNumber}\nCar Registration: ${selectedDriverForDocs.carRegistration}\nChassis No: ${selectedDriverForDocs.chassisNumber}\nCar Name: ${selectedDriverForDocs.carName}\nStatus: ${selectedDriverForDocs.status}`;
+    folder.file("Driver_Details.txt", detailsText);
+    
+    // Helper to add base64 images
+    const addImageToZip = (base64String, filename) => {
+      if (!base64String) return;
+      const base64Data = base64String.replace(/^data:image\/(png|jpeg|jpg);base64,/, "");
+      folder.file(filename, base64Data, {base64: true});
+    };
+    
+    addImageToZip(selectedDriverForDocs.selfieUrl, "Selfie.jpg");
+    addImageToZip(selectedDriverForDocs.aadharFrontUrl, "Aadhar_Front.jpg");
+    addImageToZip(selectedDriverForDocs.aadharBackUrl, "Aadhar_Back.jpg");
+    addImageToZip(selectedDriverForDocs.drivingLicenseUrl, "Driving_License.jpg");
+    addImageToZip(selectedDriverForDocs.carRegistrationDocUrl, "Car_Registration.jpg");
+    addImageToZip(selectedDriverForDocs.policeVerificationUrl, "Police_Verification.jpg");
+    
+    zip.generateAsync({type:"blob"}).then(function(content) {
+      saveAs(content, `${folderName}.zip`);
+    });
+  };
+
   const handleOpenDriverCrud = (driver = null) => {
     if (driver) {
       setEditingDriver(driver);
       setDriverForm({
         name: driver.name || '',
         contact: driver.contact || '',
-        password: '', // do not populate password for security
+        password: driver.password || '', // populated so admin can edit
         address: driver.address || '',
         aadharNumber: driver.aadharNumber || '',
         licenseNumber: driver.licenseNumber || '',
@@ -1125,10 +1240,24 @@ export default function AdminDashboard() {
                       <h3 className="text-2xl font-bold text-white">Driver Directory</h3>
                       <p className="text-gray-400 text-sm">Manage drivers, approvals, and vehicle data</p>
                     </div>
-                    
-                    <button onClick={() => handleOpenDriverCrud()} className="btn-primary py-2 px-4 text-sm whitespace-nowrap">
-                      <i className="fa-solid fa-plus mr-2"></i> Add New Driver
-                    </button>
+                    <div className="flex items-center gap-4">
+                      {/* WhatsApp Auto Toggle */}
+                      <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-full border border-white/10">
+                        <span className={`text-xs font-bold ${!waAutoMode ? 'text-white' : 'text-gray-500'}`}>Manual</span>
+                        <button 
+                          onClick={() => setWaAutoMode(!waAutoMode)}
+                          className={`w-10 h-5 rounded-full relative transition-colors ${waAutoMode ? 'bg-[#25D366]' : 'bg-gray-600'}`}
+                        >
+                          <div className={`w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 transition-transform ${waAutoMode ? 'translate-x-5' : 'translate-x-1'}`}></div>
+                        </button>
+                        <span className={`text-xs font-bold flex items-center gap-1 ${waAutoMode ? 'text-[#25D366]' : 'text-gray-500'}`}>
+                          Auto <i className="fa-brands fa-whatsapp"></i>
+                        </span>
+                      </div>
+                      <button onClick={() => handleOpenDriverCrud()} className="btn-primary py-2 px-4 text-sm whitespace-nowrap">
+                        <i className="fa-solid fa-plus mr-2"></i> Add New Driver
+                      </button>
+                    </div>
                   </div>
 
                   {/* Search and Filter */}
@@ -1208,6 +1337,10 @@ export default function AdminDashboard() {
                                   <div>
                                     <div className="font-bold text-white flex items-center gap-2">
                                       {d.name}
+                                      <div className="relative inline-flex items-center" title={`WhatsApp Status: ${d.waApprovalStatus || 'pending'}`}>
+                                        <i className="fa-brands fa-whatsapp text-gray-400"></i>
+                                        <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${d.waApprovalStatus === 'success' ? 'bg-[#25D366]' : d.waApprovalStatus === 'error' ? 'bg-red-500' : 'bg-orange-500'}`}></div>
+                                      </div>
                                       {d.createdBy === 'admin' ? (
                                         <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded border border-blue-500/30">Admin Add</span>
                                       ) : (
@@ -1215,6 +1348,7 @@ export default function AdminDashboard() {
                                       )}
                                     </div>
                                     <div className="text-xs text-gray-500">{d.contact}</div>
+                                    <div className="text-xs font-mono text-taxi-yellow mt-1">Pwd: {d.password || 'N/A'}</div>
                                   </div>
                                 </div>
                               </td>
@@ -1298,13 +1432,8 @@ export default function AdminDashboard() {
                   <input type="text" className="input-modern" required value={driverForm.address} onChange={e => setDriverForm({...driverForm, address: e.target.value})} />
                 </div>
                 <div>
-                  <label className="form-label">Password {editingDriver && '(Leave empty to keep current)'}</label>
-                  <div className="relative">
-                    <input type={showDriverPassword ? "text" : "password"} className="input-modern pr-10" value={driverForm.password} onChange={e => setDriverForm({...driverForm, password: e.target.value})} required={!editingDriver} />
-                    <button type="button" onClick={() => setShowDriverPassword(!showDriverPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-taxi-yellow focus:outline-none">
-                      <i className={`fa-solid ${showDriverPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                    </button>
-                  </div>
+                  <label className="form-label">Password</label>
+                  <input type="text" className="input-modern" value={driverForm.password} onChange={e => setDriverForm({...driverForm, password: e.target.value})} required={!editingDriver} />
                 </div>
                 <div>
                   <label className="form-label">Aadhar Number *</label>
@@ -1469,50 +1598,37 @@ export default function AdminDashboard() {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="bg-black/40 rounded-xl p-3 border border-white/5">
-                <h4 className="text-xs text-gray-400 uppercase tracking-wider mb-2 font-semibold">Selfie / Photo</h4>
-                {selectedDriverForDocs.selfieUrl ? (
-                  <img src={selectedDriverForDocs.selfieUrl} alt="Selfie" className="w-full h-48 object-contain bg-black/50 rounded-lg" />
-                ) : <div className="w-full h-48 flex items-center justify-center text-sm text-gray-600 bg-black/20 rounded-lg">No Document</div>}
-              </div>
-
-              <div className="bg-black/40 rounded-xl p-3 border border-white/5">
-                <h4 className="text-xs text-gray-400 uppercase tracking-wider mb-2 font-semibold">Aadhar (Front)</h4>
-                {selectedDriverForDocs.aadharFrontUrl ? (
-                  <img src={selectedDriverForDocs.aadharFrontUrl} alt="Aadhar Front" className="w-full h-48 object-contain bg-black/50 rounded-lg" />
-                ) : <div className="w-full h-48 flex items-center justify-center text-sm text-gray-600 bg-black/20 rounded-lg">No Document</div>}
-              </div>
-
-              <div className="bg-black/40 rounded-xl p-3 border border-white/5">
-                <h4 className="text-xs text-gray-400 uppercase tracking-wider mb-2 font-semibold">Aadhar (Back)</h4>
-                {selectedDriverForDocs.aadharBackUrl ? (
-                  <img src={selectedDriverForDocs.aadharBackUrl} alt="Aadhar Back" className="w-full h-48 object-contain bg-black/50 rounded-lg" />
-                ) : <div className="w-full h-48 flex items-center justify-center text-sm text-gray-600 bg-black/20 rounded-lg">No Document</div>}
-              </div>
-
-              <div className="bg-black/40 rounded-xl p-3 border border-white/5">
-                <h4 className="text-xs text-gray-400 uppercase tracking-wider mb-2 font-semibold">Driving License</h4>
-                {selectedDriverForDocs.drivingLicenseUrl ? (
-                  <img src={selectedDriverForDocs.drivingLicenseUrl} alt="DL" className="w-full h-48 object-contain bg-black/50 rounded-lg" />
-                ) : <div className="w-full h-48 flex items-center justify-center text-sm text-gray-600 bg-black/20 rounded-lg">No Document</div>}
-              </div>
-
-              <div className="bg-black/40 rounded-xl p-3 border border-white/5">
-                <h4 className="text-xs text-gray-400 uppercase tracking-wider mb-2 font-semibold">Car Registration (RC)</h4>
-                {selectedDriverForDocs.carRegistrationDocUrl ? (
-                  <img src={selectedDriverForDocs.carRegistrationDocUrl} alt="RC" className="w-full h-48 object-contain bg-black/50 rounded-lg" />
-                ) : <div className="w-full h-48 flex items-center justify-center text-sm text-gray-600 bg-black/20 rounded-lg">No Document</div>}
-              </div>
-
-              <div className="bg-black/40 rounded-xl p-3 border border-white/5">
-                <h4 className="text-xs text-gray-400 uppercase tracking-wider mb-2 font-semibold">Police Verification</h4>
-                {selectedDriverForDocs.policeVerificationUrl ? (
-                  <img src={selectedDriverForDocs.policeVerificationUrl} alt="Police Verf" className="w-full h-48 object-contain bg-black/50 rounded-lg" />
-                ) : <div className="w-full h-48 flex items-center justify-center text-sm text-gray-600 bg-black/20 rounded-lg">No Document</div>}
-              </div>
+              {[
+                { label: 'Selfie / Photo', key: 'selfieUrl' },
+                { label: 'Aadhar (Front)', key: 'aadharFrontUrl' },
+                { label: 'Aadhar (Back)', key: 'aadharBackUrl' },
+                { label: 'Driving License', key: 'drivingLicenseUrl' },
+                { label: 'Car Registration (RC)', key: 'carRegistrationDocUrl' },
+                { label: 'Police Verification', key: 'policeVerificationUrl' }
+              ].map(doc => (
+                <div key={doc.key} className="bg-black/40 rounded-xl p-3 border border-white/5 relative flex flex-col">
+                  <h4 className="text-xs text-gray-400 uppercase tracking-wider mb-2 font-semibold">{doc.label}</h4>
+                  {selectedDriverForDocs[doc.key] ? (
+                    <img src={selectedDriverForDocs[doc.key]} alt={doc.label} className="w-full h-48 object-contain bg-black/50 rounded-lg" />
+                  ) : (
+                    <div className="w-full h-48 flex items-center justify-center text-sm text-gray-600 bg-black/20 rounded-lg">No Document</div>
+                  )}
+                  <div className="mt-3">
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={(e) => handleDocUpdate(e, selectedDriverForDocs.id, doc.key)} 
+                      className="text-xs text-gray-400 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-taxi-yellow/10 file:text-taxi-yellow hover:file:bg-taxi-yellow/20 w-full" 
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
             
-            <div className="mt-8 flex justify-end">
+            <div className="mt-8 flex justify-end gap-4">
+              <button onClick={handleDownloadZip} className="btn-primary px-8 py-2 bg-green-600 hover:bg-green-500 text-white border-none flex items-center gap-2">
+                <i className="fa-solid fa-file-zipper"></i> Download Zip
+              </button>
               <button onClick={() => { setShowDocsModal(false); setSelectedDriverForDocs(null); }} className="btn-primary px-8 py-2">Close Viewer</button>
             </div>
           </div>

@@ -81,11 +81,18 @@ export async function POST(request) {
       const success = res.ok && data.success;
 
       if (bookingId && targetType) {
-        const updateField = targetType === 'driver' ? 'waDriverStatus' : 'waCustomerStatus';
-        await prisma.booking.update({
-          where: { id: bookingId },
-          data: { [updateField]: success ? 'success' : 'error' }
-        }).catch(err => console.error("Failed to update booking WA status in DB:", err));
+        if (targetType === 'driver_approval') {
+          await prisma.driverProfile.update({
+            where: { id: bookingId }, // bookingId holds the driver ID here
+            data: { waApprovalStatus: success ? 'success' : 'error' }
+          }).catch(err => console.error("Failed to update driver WA status in DB:", err));
+        } else {
+          const updateField = targetType === 'driver' ? 'waDriverStatus' : 'waCustomerStatus';
+          await prisma.booking.update({
+            where: { id: bookingId },
+            data: { [updateField]: success ? 'success' : 'error' }
+          }).catch(err => console.error("Failed to update booking WA status in DB:", err));
+        }
       }
 
       if (!res.ok) {
