@@ -314,17 +314,21 @@ export default function AdminDashboard() {
         if (status === 'confirmed' && driverId) {
           const assignedDriver = drivers.find(d => d.id === driverId);
           const booking = bookings.find(b => b.id === id);
-          if (assignedDriver && booking) {
-            const customerMsg = `Hello ${booking.customerName},\nYour ride from ${booking.pickup} to ${booking.destination} is Confirmed!\n\nDriver Details:\nName: ${assignedDriver.name}\nPhone: ${assignedDriver.contact}\nVehicle: ${assignedDriver.carName} - ${assignedDriver.carRegistration}\nEstimated Fare: ₹${booking.estimatedFare || 'N/A'}\n\nThe driver will reach you before the scheduled time.\nThank you for choosing Raj Taxi!`;
-            if (waAutoMode) {
-              handleAutoSend(id, 'customer', booking.customerPhone, customerMsg);
-            } else {
-              window.open(`https://wa.me/${booking.customerPhone.replace(/\D/g,'')}?text=${encodeURIComponent(customerMsg)}`, '_blank');
+            if (assignedDriver && booking) {
+              const customerMsg = `Hello ${booking.customerName},\nYour ride from ${booking.pickup} to ${booking.destination} is Confirmed!\n\nDriver Details:\nName: ${assignedDriver.name}\nPhone: ${assignedDriver.contact}\nVehicle: ${assignedDriver.carName} - ${assignedDriver.carRegistration}\nEstimated Fare: ₹${booking.estimatedFare || 'N/A'}\n\nThe driver will reach you before the scheduled time.\nThank you for choosing Raj Taxi!`;
+              const mapsLink = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(booking.pickup)}&destination=${encodeURIComponent(booking.destination)}`;
+              const driverMsg = `New Booking Details:\nName: ${booking.customerName}\nPhone: ${booking.customerPhone}\nPickup: ${booking.pickup}\nDropoff: ${booking.destination}\nDate: ${booking.date} at ${booking.time}\nVehicle: ${booking.vehicleType}\nPassengers: ${booking.passengers}\nEstimated Fare: ₹${booking.estimatedFare || 'N/A'}\n\nNavigation Link:\n${mapsLink}`;
+              
+              if (waAutoMode) {
+                handleAutoSend(id, 'driver', assignedDriver.contact, driverMsg);
+                handleAutoSend(id, 'customer', booking.customerPhone, customerMsg);
+              } else {
+                window.open(`https://wa.me/${booking.customerPhone.replace(/\D/g,'')}?text=${encodeURIComponent(customerMsg)}`, '_blank');
+              }
             }
-          }
-          setShowDriverModal(false);
-          setSelectedBookingId(null);
-          setSelectedDriverId('');
+            setShowDriverModal(false);
+            setSelectedBookingId(null);
+            setSelectedDriverId('');
         }
         fetchBookings(); // reload after to get updated status
       }
@@ -770,7 +774,8 @@ export default function AdminDashboard() {
                                         <i className="fa-solid fa-spinner fa-spin text-xs ml-1"></i>
                                       ) : (
                                         b.waDriverStatus === 'success' ? <div className="w-2 h-2 rounded-full bg-green-500 ml-1"></div> :
-                                        b.waDriverStatus === 'error' ? <div className="w-2 h-2 rounded-full bg-red-500 ml-1"></div> : null
+                                        b.waDriverStatus === 'error' ? <div className="w-2 h-2 rounded-full bg-red-500 ml-1"></div> : 
+                                        <div className="w-2 h-2 rounded-full bg-orange-500 ml-1"></div>
                                       )}
                                     </button>
                                   ) : (
@@ -791,7 +796,8 @@ export default function AdminDashboard() {
                                           <i className="fa-solid fa-spinner fa-spin text-xs ml-1"></i>
                                         ) : (
                                           b.waCustomerStatus === 'success' ? <div className="w-2 h-2 rounded-full bg-green-500 ml-1"></div> :
-                                          b.waCustomerStatus === 'error' ? <div className="w-2 h-2 rounded-full bg-red-500 ml-1"></div> : null
+                                          b.waCustomerStatus === 'error' ? <div className="w-2 h-2 rounded-full bg-red-500 ml-1"></div> : 
+                                          <div className="w-2 h-2 rounded-full bg-orange-500 ml-1"></div>
                                         )}
                                       </button>
                                     ) : (
