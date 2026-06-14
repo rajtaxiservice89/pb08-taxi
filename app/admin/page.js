@@ -91,12 +91,20 @@ export default function AdminDashboard() {
 
   // Load data based on tab
   useEffect(() => {
-    if (activeTab === 'bookings') fetchBookings();
+    let interval;
+    if (activeTab === 'bookings') {
+      fetchBookings();
+      interval = setInterval(() => fetchBookings(false), 10000);
+    }
     if (activeTab === 'cms') fetchSettings();
     if (activeTab === 'drivers') fetchDrivers();
     if (activeTab === 'fare') fetchFareSettings();
     if (activeTab === 'location-api') fetchLocationApis();
     if (activeTab === 'whatsapp') fetchWaStatus();
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [activeTab]);
 
   // Load drivers initially to use in driver assignment modal
@@ -104,8 +112,8 @@ export default function AdminDashboard() {
     fetchDrivers();
   }, []);
 
-  const fetchBookings = async () => {
-    setLoadingBookings(true);
+  const fetchBookings = async (showLoading = true) => {
+    if (showLoading) setLoadingBookings(true);
     try {
       const res = await fetch('/api/bookings');
       if (res.ok) {
@@ -115,7 +123,7 @@ export default function AdminDashboard() {
     } catch (e) {
       console.error(e);
     } finally {
-      setLoadingBookings(false);
+      if (showLoading) setLoadingBookings(false);
     }
   };
 

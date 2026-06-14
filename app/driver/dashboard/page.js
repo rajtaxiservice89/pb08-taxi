@@ -14,10 +14,12 @@ function DashboardContent() {
 
   useEffect(() => {
     fetchDashboardData();
+    const interval = setInterval(() => fetchDashboardData(false), 10000);
+    return () => clearInterval(interval);
   }, [driverId]);
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
+  const fetchDashboardData = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     setError('');
     try {
       const url = driverId ? `/api/driver/dashboard?driverId=${driverId}` : '/api/driver/dashboard';
@@ -33,7 +35,7 @@ function DashboardContent() {
       console.error(e);
       setError('A network error occurred. Please try again.');
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
