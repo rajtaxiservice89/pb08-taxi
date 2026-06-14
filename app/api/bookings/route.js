@@ -2,29 +2,61 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 
+// Helper function to send WhatsApp message via Render Microservice
+async function sendWhatsAppNotification(phone, message) {
+  try {
+    const serverUrl = process.env.WHATSAPP_SERVER_URL || 'http://localhost:3001';
+    const apiKey = process.env.WHATSAPP_API_KEY || 'raj-taxi-secret-key-123';
+    
+    // Send request but don't strictly wait for response to speed up API
+    fetch(`${serverUrl}/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey
+      },
+      body: JSON.stringify({ phone, message })
+    }).catch(err => console.error('WhatsApp background fetch error:', err.message));
+  } catch (err) {
+    console.error('WhatsApp notification error:', err);
+  }
+}
+
 // POST: Create a new booking (public)
 export async function POST(request) {
   try {
     const data = await request.json();
     
     // Validate required fields
-    if (!data.name || !data.phone || !data.pickup || !data.dropoff || !data.date || !data.time) {
+    if (!data.customerName || !data.customerPhone || !data.pickup || !data.destination || !data.date || !data.time || !data.vehicleType || !data.passengers) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
     }
 
     const booking = await prisma.booking.create({
       data: {
-        name: data.name,
-        phone: data.phone,
-        email: data.email || null,
+        customerName: data.customerName,
+        customerPhone: data.customerPhone,
         pickup: data.pickup,
-        dropoff: data.dropoff,
+        destination: data.destination,
         date: data.date,
         time: data.time,
+        vehicleType: data.vehicleType,
+        passengers: data.passengers,
         notes: data.notes || null,
+        estimatedFare: data.estimatedFare ? parseFloat(data.estimatedFare) : null,
         status: 'pending'
       }
     });
+
+    // Send WhatsApp to Admin (if ADMIN_PHONE is set in env)
+    if (process.env.ADMIN_PHONE) {
+      const adminMsg = `🚕 *New Booking Received!*\n\n*Name:* ${data.customerName}\n*Phone:* ${data.customerPhone}\n*Pickup:* ${data.pickup}\n*Drop:* ${data.destination}\n*Date:* ${data.date} at ${data.time}\n*Vehicle:* ${data.vehicleType}\n*Fare:* ₹${data.estimatedFare || 'TBD'}`;
+      sendWhatsAppNotification(process.env.ADMIN_PHONE, adminMsg);
+    }
+
+    // Send WhatsApp to Customer
+    const customerMsg = `Hello ${data.customerName},\n\nYour booking with *Raj Taxi* has been received! 🚕\n\n*Pickup:* ${data.pickup}\n*Drop:* ${data.destination}\n*Date & Time:* ${data.date} at ${data.time}\n\nWe will assign a driver shortly. Thank you!`;
+    sendWhatsAppNotification(data.customerPhone, customerMsg);
 
     return NextResponse.json({ success: true, booking });
   } catch (error) {
@@ -46,7 +78,8 @@ export async function GET(request) {
     }
 
     const bookings = await prisma.booking.findMany({
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      include: { assignedDriver: true }
     });
 
     return NextResponse.json({ success: true, bookings });
@@ -56,24 +89,74 @@ export async function GET(request) {
   }
 }
 
-// PATCH: Update booking status (Admin only)
+// PATCH: Update booking status (Admin and Driver)
 export async function PATCH(request) {
   try {
-    const token = request.cookies.get('admin_token')?.value;
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const adminToken = request.cookies.get('admin_token')?.value;
+    const driverToken = request.cookies.get('driver_token')?.value;
     
-    const payload = await verifyToken(token);
-    if (!payload || payload.role !== 'admin') {
+    let role = null;
+    let driverId = null;
+
+    if (adminToken) {
+      const payload = await verifyToken(adminToken);
+      if (payload && payload.role === 'admin') role = 'admin';
+    } 
+    
+    if (!role && driverToken) {
+      const payload = await verifyToken(driverToken);
+      if (payload && payload.role === 'driver') {
+        role = 'driver';
+        driverId = payload.id;
+      }
+    }
+
+    if (!role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id, status } = await request.json();
+    const { id, status, assignedDriverId } = await request.json();
     if (!id || !status) return NextResponse.json({ error: 'Missing data' }, { status: 400 });
+
+    if (role === 'driver') {
+      const booking = await prisma.booking.findUnique({ where: { id } });
+      if (!booking || booking.assignedDriverId !== driverId) {
+        return NextResponse.json({ error: 'Unauthorized to modify this booking' }, { status: 403 });
+      }
+      const updatedBooking = await prisma.booking.update({
+        where: { id },
+        data: { status }
+      });
+      return NextResponse.json({ success: true, booking: updatedBooking });
+    }
+
+    // Admin flow
+    const updateData = { status };
+    if (assignedDriverId) updateData.assignedDriverId = assignedDriverId;
 
     const updatedBooking = await prisma.booking.update({
       where: { id },
-      data: { status }
+      data: updateData,
+      include: { assignedDriver: true }
     });
+
+    // Notify Driver if newly assigned
+    if (assignedDriverId && updatedBooking.assignedDriver) {
+      const dMsg = `🚕 *New Trip Assigned!*\n\n*Pickup:* ${updatedBooking.pickup}\n*Drop:* ${updatedBooking.destination}\n*Date & Time:* ${updatedBooking.date} at ${updatedBooking.time}\n*Customer:* ${updatedBooking.customerName} (${updatedBooking.customerPhone})`;
+      sendWhatsAppNotification(updatedBooking.assignedDriver.phone, dMsg);
+    }
+
+    // Notify Customer if status changed
+    if (status === 'confirmed' && updatedBooking.assignedDriver) {
+      const cMsg = `Hello ${updatedBooking.customerName},\n\nYour Raj Taxi booking is *Confirmed*! 🚕\n\n*Driver:* ${updatedBooking.assignedDriver.name}\n*Vehicle:* ${updatedBooking.assignedDriver.vehicleNumber}\n*Driver Phone:* ${updatedBooking.assignedDriver.phone}\n\nHave a safe trip!`;
+      sendWhatsAppNotification(updatedBooking.customerPhone, cMsg);
+    } else if (status === 'completed') {
+      const cMsg = `Hello ${updatedBooking.customerName},\n\nYour trip has been completed. Thank you for choosing Raj Taxi! 🚕`;
+      sendWhatsAppNotification(updatedBooking.customerPhone, cMsg);
+    } else if (status === 'cancelled') {
+      const cMsg = `Hello ${updatedBooking.customerName},\n\nYour booking with Raj Taxi has been cancelled. Please contact us for more info.`;
+      sendWhatsAppNotification(updatedBooking.customerPhone, cMsg);
+    }
 
     return NextResponse.json({ success: true, booking: updatedBooking });
   } catch (error) {

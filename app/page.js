@@ -5,12 +5,17 @@ import { prisma } from '@/lib/prisma';
 export const revalidate = 0;
 
 export default async function Home() {
-  let settings = await prisma.siteSetting.findFirst();
+  let settings = null;
+  try {
+    settings = await prisma.siteSetting.findFirst();
+  } catch (e) {
+    console.error("Failed to fetch settings:", e);
+  }
   
   // Fallbacks if no settings found
   if (!settings) {
     settings = {
-      heroTitle: "Ride into the Future",
+      heroTitle: "Ride into the Destination",
       heroText: "Experience next-generation comfort and safety. From city commutes to outstation trips, we provide a seamless journey tailored for you.",
       phone1: "9056273306"
     };

@@ -11,8 +11,8 @@ export async function GET() {
     if (!settings) {
       settings = await prisma.siteSetting.create({
         data: {
-          heroTitle: "Reliable & Safe Taxi Service",
-          heroText: "Experience next-generation comfort with our premium fleet. Your journey, our priority.",
+          heroTitle: "Ride into the Destination",
+          heroText: "Experience next-generation comfort and safety. From city commutes to outstation trips, we provide a seamless journey tailored for you.",
           phone1: "9056273306",
           phone2: "9888079736",
           email: "info@pb08taxi.com",

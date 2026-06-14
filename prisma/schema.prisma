@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  engineType = "library"
 }
 
 datasource db {
@@ -24,6 +25,7 @@ model SiteSetting {
   address   String   @default("Main Street, City Center")
   whatsapp1 String   @default("9056273306")
   whatsapp2 String   @default("9888079736")
+  secretPin String   @default("333725")
   updatedAt DateTime @updatedAt
 }
 
@@ -42,7 +44,10 @@ model Booking {
   vehicleType   String
   passengers    Int
   notes         String?
+  estimatedFare Float?
   status        String   @default("PENDING") // PENDING, CONFIRMED, COMPLETED, CANCELLED
+  assignedDriverId String?
+  assignedDriver   DriverProfile? @relation(fields: [assignedDriverId], references: [id])
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -64,7 +69,27 @@ model DriverProfile {
   drivingLicenseUrl     String?
   carRegistrationDocUrl String?
   policeVerificationUrl String?
+  createdBy             String   @default("driver") // "admin" or "driver"
   status                String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  bookings              Booking[]
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
+}
+
+model FareSetting {
+  id          String   @id @default("global")
+  appCost     Float    @default(50)
+  driverCost  Float    @default(50)
+  baseFare    Float    @default(50)
+  distanceTiers String @default("[{\"min\": 0, \"max\": 5, \"rate\": 20}, {\"min\": 5, \"max\": 9999, \"rate\": 15}]")
+  updatedAt   DateTime @updatedAt
+}
+
+model LocationApi {
+  id        String   @id @default(uuid())
+  provider  String   
+  apiKey    String
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
