@@ -18,6 +18,9 @@ function DashboardContent() {
     return () => clearInterval(interval);
   }, [driverId]);
 
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '' });
+  const [passwordStatus, setPasswordStatus] = useState({ loading: false, error: '', success: '' });
+
   const fetchDashboardData = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     setError('');
@@ -67,6 +70,33 @@ function DashboardContent() {
     } catch (e) {
       console.error(e);
       alert('A network error occurred.');
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordStatus({ loading: true, error: '', success: '' });
+    try {
+      const res = await fetch('/api/driver/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          driverId: driver.id,
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPasswordStatus({ loading: false, error: '', success: 'Password updated successfully!' });
+        setPasswordForm({ currentPassword: '', newPassword: '' });
+        setTimeout(() => setPasswordStatus({ loading: false, error: '', success: '' }), 5000);
+      } else {
+        setPasswordStatus({ loading: false, error: data.error || 'Failed to update password', success: '' });
+      }
+    } catch (e) {
+      console.error(e);
+      setPasswordStatus({ loading: false, error: 'Network error. Please try again.', success: '' });
     }
   };
 
@@ -178,6 +208,45 @@ function DashboardContent() {
                   <div className="text-2xl font-bold text-red-400 relative z-10">{cancelledRides}</div>
                 </div>
               </div>
+
+              {/* Change Password Card */}
+              <div className="bg-black/40 border border-white/10 rounded-2xl p-6">
+                <h3 className="text-lg font-bold text-white mb-4"><i className="fa-solid fa-lock text-taxi-yellow mr-2"></i> Change Password</h3>
+                <form onSubmit={handleChangePassword} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wider">Current Password</label>
+                    <input 
+                      type="password" 
+                      className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-taxi-yellow transition-colors"
+                      value={passwordForm.currentPassword}
+                      onChange={(e) => setPasswordForm({...passwordForm, currentPassword: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wider">New Password</label>
+                    <input 
+                      type="password" 
+                      className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-taxi-yellow transition-colors"
+                      value={passwordForm.newPassword}
+                      onChange={(e) => setPasswordForm({...passwordForm, newPassword: e.target.value})}
+                      required
+                    />
+                  </div>
+                  
+                  {passwordStatus.error && <div className="text-red-400 text-sm">{passwordStatus.error}</div>}
+                  {passwordStatus.success && <div className="text-green-400 text-sm">{passwordStatus.success}</div>}
+                  
+                  <button 
+                    type="submit" 
+                    disabled={passwordStatus.loading}
+                    className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center disabled:opacity-50"
+                  >
+                    {passwordStatus.loading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : 'Update Password'}
+                  </button>
+                </form>
+              </div>
+
             </div>
 
             {/* Right Column: Bookings */}

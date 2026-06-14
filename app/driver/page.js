@@ -9,6 +9,7 @@ export default function DriverAttachment() {
   const [formData, setFormData] = useState({
     name: '', contact: '', address: '', aadharNumber: '', 
     licenseNumber: '', carName: '', carRegistration: '', chassisNumber: '',
+    password: 'PB08TAXI',
     selfieUrl: '', aadharFrontUrl: '', aadharBackUrl: '', 
     drivingLicenseUrl: '', carRegistrationDocUrl: '', policeVerificationUrl: ''
   });

@@ -80,7 +80,7 @@ export default function AdminDashboard() {
   const [showDriverPassword, setShowDriverPassword] = useState(false);
   const [editingDriver, setEditingDriver] = useState(null);
   const [driverForm, setDriverForm] = useState({
-    name: '', contact: '', password: '', address: '',
+    name: '', contact: '', password: 'PB08TAXI', address: '',
     aadharNumber: '', licenseNumber: '', carRegistration: '',
     chassisNumber: '', carName: '', status: 'approved'
   });
@@ -90,24 +90,33 @@ export default function AdminDashboard() {
   // Documents Modal
   const [showDocsModal, setShowDocsModal] = useState(false);
   const [selectedDriverForDocs, setSelectedDriverForDocs] = useState(null);
+  
+  // Password Visibility Toggle for Grid
+  const [showPasswords, setShowPasswords] = useState({});
+  const togglePassword = (id) => setShowPasswords(prev => ({ ...prev, [id]: !prev[id] }));
 
   // Load data based on tab
   useEffect(() => {
-    let interval;
-    if (activeTab === 'bookings') {
-      fetchBookings();
-      interval = setInterval(() => fetchBookings(false), 10000);
-    }
+    fetchBookings(false);
+    fetchDrivers(false);
+    
+    const interval = setInterval(() => {
+      fetchBookings(false);
+      fetchDrivers(false);
+    }, 5000);
+
     if (activeTab === 'cms') fetchSettings();
-    if (activeTab === 'drivers') fetchDrivers();
     if (activeTab === 'fare') fetchFareSettings();
     if (activeTab === 'location-api') fetchLocationApis();
     if (activeTab === 'whatsapp') fetchWaStatus();
 
     return () => {
-      if (interval) clearInterval(interval);
+      clearInterval(interval);
     };
   }, [activeTab]);
+
+  const pendingBookingsCount = bookings.filter(b => b.status === 'pending').length;
+  const pendingDriversCount = drivers.filter(d => d.status === 'pending').length;
 
   // Load drivers initially to use in driver assignment modal
   useEffect(() => {
@@ -189,8 +198,8 @@ export default function AdminDashboard() {
     } catch (e) { console.error(e); }
   };
 
-  const fetchDrivers = async () => {
-    setLoadingDrivers(true);
+  const fetchDrivers = async (showLoading = true) => {
+    if (showLoading) setLoadingDrivers(true);
     try {
       const res = await fetch('/api/drivers');
       if (res.ok) {
@@ -198,7 +207,7 @@ export default function AdminDashboard() {
         setDrivers(data.drivers || []);
       }
     } catch (e) { console.error(e); } finally {
-      setLoadingDrivers(false);
+      if (showLoading) setLoadingDrivers(false);
     }
   };
 
@@ -373,9 +382,34 @@ export default function AdminDashboard() {
             })
           });
         }
-        fetchDrivers();
+        fetchDrivers(false);
       }
     } catch (e) { console.error(e); }
+  };
+
+  const resendCredentials = async (driver) => {
+    if (!driver || !driver.contact) return;
+    try {
+      const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://pb08taxi.vercel.app';
+      const msg = `🚗 *Welcome to PB08 Taxi!* 🚗\n\nHi ${driver.name}, your driver profile has been *APPROVED*.\n\nYou can now log in to your Driver Dashboard to receive bookings.\n\n*Login URL:* ${appUrl}/driver/login\n*Login ID:* ${driver.contact}\n*Password:* ${driver.password || 'Please contact Admin'}\n\nDrive safe!`;
+      
+      await fetch('/api/admin/whatsapp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'send',
+          phone: driver.contact,
+          message: msg,
+          bookingId: driver.id,
+          targetType: 'driver_approval'
+        })
+      });
+      alert('Credentials resent successfully.');
+      fetchDrivers(false);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to resend credentials.');
+    }
   };
 
   const handleDeleteDriver = async (id) => {
@@ -505,7 +539,7 @@ export default function AdminDashboard() {
     } else {
       setEditingDriver(null);
       setDriverForm({
-        name: '', contact: '', password: '', address: '',
+        name: '', contact: '', password: 'PB08TAXI', address: '',
         aadharNumber: '', licenseNumber: '', carRegistration: '',
         chassisNumber: '', carName: '', status: 'approved', createdBy: 'admin'
       });
@@ -691,6 +725,7 @@ export default function AdminDashboard() {
                 onClick={() => setActiveTab('bookings')}
               >
                 <i className="fa-solid fa-calendar-check w-5 text-center"></i> Booking Management
+                {pendingBookingsCount > 0 && <span className={`ml-auto text-xs font-bold px-2 py-0.5 rounded-full ${activeTab === 'bookings' ? 'bg-red-500 text-white' : 'bg-red-500/80 text-white'}`}>{pendingBookingsCount}</span>}
               </button>
               <button 
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'cms' ? 'bg-taxi-yellow text-black shadow-[0_0_15px_rgba(255,215,0,0.3)]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
@@ -703,6 +738,7 @@ export default function AdminDashboard() {
                 onClick={() => setActiveTab('drivers')}
               >
                 <i className="fa-solid fa-id-card w-5 text-center"></i> Driver Directory
+                {pendingDriversCount > 0 && <span className={`ml-auto text-xs font-bold px-2 py-0.5 rounded-full ${activeTab === 'drivers' ? 'bg-red-500 text-white' : 'bg-red-500/80 text-white'}`}>{pendingDriversCount}</span>}
               </button>
               <button 
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'fare' ? 'bg-taxi-yellow text-black shadow-[0_0_15px_rgba(255,215,0,0.3)]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
@@ -1348,7 +1384,12 @@ export default function AdminDashboard() {
                                       )}
                                     </div>
                                     <div className="text-xs text-gray-500">{d.contact}</div>
-                                    <div className="text-xs font-mono text-taxi-yellow mt-1">Pwd: {d.password || 'N/A'}</div>
+                                    <div className="text-xs font-mono text-taxi-yellow mt-1 flex items-center gap-2">
+                                      Pwd: {showPasswords[d.id] ? (d.password || 'N/A') : '••••••••'}
+                                      <button onClick={() => togglePassword(d.id)} className="text-gray-400 hover:text-white">
+                                        <i className={`fa-solid ${showPasswords[d.id] ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
                               </td>
@@ -1386,6 +1427,10 @@ export default function AdminDashboard() {
                                   <i className="fa-solid fa-chart-line"></i> Dashboard
                                 </a>
 
+                                {/* Resend Credentials */}
+                                <button onClick={() => resendCredentials(d)} className="text-orange-400 hover:text-orange-300 text-xs font-semibold border border-orange-500/30 px-2 py-1 rounded bg-orange-500/10 mr-2 mb-2">
+                                  <i className="fa-brands fa-whatsapp"></i> Resend
+                                </button>
                                 {/* Edit / Delete Actions */}
                                 <button onClick={() => handleOpenDriverCrud(d)} className="text-blue-400 hover:text-blue-300 text-xs font-semibold border border-blue-500/30 px-2 py-1 rounded bg-blue-500/10 mr-2 mb-2">
                                   <i className="fa-solid fa-pen"></i> Edit
@@ -1609,7 +1654,12 @@ export default function AdminDashboard() {
                 <div key={doc.key} className="bg-black/40 rounded-xl p-3 border border-white/5 relative flex flex-col">
                   <h4 className="text-xs text-gray-400 uppercase tracking-wider mb-2 font-semibold">{doc.label}</h4>
                   {selectedDriverForDocs[doc.key] ? (
-                    <img src={selectedDriverForDocs[doc.key]} alt={doc.label} className="w-full h-48 object-contain bg-black/50 rounded-lg" />
+                    <a href={selectedDriverForDocs[doc.key]} target="_blank" rel="noopener noreferrer" className="block relative group">
+                      <img src={selectedDriverForDocs[doc.key]} alt={doc.label} className="w-full h-48 object-contain bg-black/50 rounded-lg transition-all group-hover:brightness-75" />
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                        <i className="fa-solid fa-expand text-white text-3xl drop-shadow-md"></i>
+                      </div>
+                    </a>
                   ) : (
                     <div className="w-full h-48 flex items-center justify-center text-sm text-gray-600 bg-black/20 rounded-lg">No Document</div>
                   )}
