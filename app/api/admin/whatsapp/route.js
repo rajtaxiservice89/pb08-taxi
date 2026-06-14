@@ -47,7 +47,8 @@ export async function POST(request) {
     const serverUrl = process.env.WHATSAPP_SERVER_URL || 'http://localhost:3001';
     const apiKey = process.env.WHATSAPP_API_KEY || 'raj-taxi-secret-key-123';
     
-    const { action } = await request.json();
+    const body = await request.json();
+    const { action } = body;
 
     if (action === 'logout') {
       const res = await fetch(`${serverUrl}/logout`, {
@@ -63,6 +64,23 @@ export async function POST(request) {
       }
       
       const data = await res.json();
+      return NextResponse.json({ success: true, ...data });
+    } else if (action === 'send') {
+      const { phone, message } = body;
+      const res = await fetch(`${serverUrl}/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey
+        },
+        body: JSON.stringify({ phone, message })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        return NextResponse.json({ error: data.error || 'Failed to send message' }, { status: res.status });
+      }
+      
       return NextResponse.json({ success: true, ...data });
     }
 

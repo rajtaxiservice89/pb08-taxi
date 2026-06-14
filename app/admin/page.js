@@ -24,6 +24,21 @@ export default function AdminDashboard() {
 
   // WhatsApp State
   const [waStatus, setWaStatus] = useState({ isConnected: false, hasQR: false, qr: null, loading: false });
+  const [waAutoMode, setWaAutoMode] = useState(false);
+  const [waMsgStatus, setWaMsgStatus] = useState({});
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedMode = localStorage.getItem('waAutoMode');
+      if (savedMode === 'true') setWaAutoMode(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('waAutoMode', waAutoMode);
+    }
+  }, [waAutoMode]);
 
   // Drivers State
   const [drivers, setDrivers] = useState([]);
@@ -257,6 +272,26 @@ export default function AdminDashboard() {
     } catch(e) {}
   };
 
+  const handleAutoSend = async (bookingId, type, phone, message) => {
+    const key = `${bookingId}_${type}`;
+    setWaMsgStatus(prev => ({ ...prev, [key]: 'loading' }));
+    try {
+      const res = await fetch('/api/admin/whatsapp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'send', phone, message })
+      });
+      if (res.ok) {
+        setWaMsgStatus(prev => ({ ...prev, [key]: 'success' }));
+        setTimeout(() => setWaMsgStatus(prev => ({ ...prev, [key]: null })), 3000);
+      } else {
+        setWaMsgStatus(prev => ({ ...prev, [key]: 'error' }));
+      }
+    } catch (e) {
+      setWaMsgStatus(prev => ({ ...prev, [key]: 'error' }));
+    }
+  };
+
   const updateBookingStatus = async (id, status, driverId = null) => {
     try {
       const res = await fetch('/api/bookings', {
@@ -270,7 +305,11 @@ export default function AdminDashboard() {
           const booking = bookings.find(b => b.id === id);
           if (assignedDriver && booking) {
             const customerMsg = `Hello ${booking.customerName},\nYour ride from ${booking.pickup} to ${booking.destination} is Confirmed!\n\nDriver Details:\nName: ${assignedDriver.name}\nPhone: ${assignedDriver.contact}\nVehicle: ${assignedDriver.carName} - ${assignedDriver.carRegistration}\nEstimated Fare: ₹${booking.estimatedFare || 'N/A'}\n\nThe driver will reach you before the scheduled time.\nThank you for choosing Raj Taxi!`;
-            window.open(`https://wa.me/${booking.customerPhone.replace(/\D/g,'')}?text=${encodeURIComponent(customerMsg)}`, '_blank');
+            if (waAutoMode) {
+              handleAutoSend(id, 'customer', booking.customerPhone, customerMsg);
+            } else {
+              window.open(`https://wa.me/${booking.customerPhone.replace(/\D/g,'')}?text=${encodeURIComponent(customerMsg)}`, '_blank');
+            }
           }
           setShowDriverModal(false);
           setSelectedBookingId(null);
@@ -511,7 +550,21 @@ export default function AdminDashboard() {
                       <h3 className="text-2xl font-bold text-white">Live Bookings</h3>
                       <p className="text-gray-400 text-sm">Monitor and manage ride requests</p>
                     </div>
-                    <div className="px-3 py-1 bg-taxi-yellow/10 text-taxi-yellow rounded-full text-xs font-mono border border-taxi-yellow/30">Total: {filteredBookings.length}</div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-xl border border-white/10">
+                        <span className={`text-xs font-bold ${!waAutoMode ? 'text-white' : 'text-gray-500'}`}>Manual</span>
+                        <button 
+                          onClick={() => setWaAutoMode(!waAutoMode)}
+                          className={`w-10 h-5 rounded-full relative transition-colors ${waAutoMode ? 'bg-[#25D366]' : 'bg-gray-600'}`}
+                        >
+                          <div className={`w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 transition-transform ${waAutoMode ? 'translate-x-5' : 'translate-x-1'}`}></div>
+                        </button>
+                        <span className={`text-xs font-bold flex items-center gap-1 ${waAutoMode ? 'text-[#25D366]' : 'text-gray-500'}`}>
+                          Auto <i className="fa-brands fa-whatsapp"></i>
+                        </span>
+                      </div>
+                      <div className="px-3 py-1.5 bg-taxi-yellow/10 text-taxi-yellow rounded-full text-xs font-mono border border-taxi-yellow/30">Total: {filteredBookings.length}</div>
+                    </div>
                   </div>
                   
                   {/* Search and Filter */}
@@ -598,13 +651,40 @@ export default function AdminDashboard() {
                               </td>
                               <td className="px-6 py-4">
                                 <div className="flex flex-wrap justify-end gap-2">
-                                  <a href={`https://wa.me/?text=${encodeURIComponent(driverMsg)}`} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300 text-sm font-semibold border border-green-500/30 px-2 py-1 rounded bg-green-500/10" title="Share with Driver">
-                                    <i className="fa-brands fa-whatsapp"></i> Driver
-                                  </a>
-                                  {b.status === 'confirmed' && (
-                                    <a href={`https://wa.me/${b.customerPhone.replace(/\D/g,'')}?text=${encodeURIComponent(customerMsg)}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 text-sm font-semibold border border-blue-500/30 px-2 py-1 rounded bg-blue-500/10" title="Confirm Customer">
-                                      <i className="fa-brands fa-whatsapp"></i> Customer
+                                  {waAutoMode ? (
+                                    <button 
+                                      onClick={() => handleAutoSend(b.id, 'driver', b.assignedDriver?.contact || '', driverMsg)}
+                                      className="relative text-green-400 hover:text-green-300 text-sm font-semibold border border-green-500/30 px-2 py-1 rounded bg-green-500/10 flex items-center gap-1"
+                                      title={!b.assignedDriver ? "Please assign a driver first" : "Auto-Send to Driver"}
+                                    >
+                                      <i className="fa-brands fa-whatsapp"></i> Driver
+                                      {waMsgStatus[`${b.id}_driver`] === 'loading' && <i className="fa-solid fa-spinner fa-spin text-xs ml-1"></i>}
+                                      {waMsgStatus[`${b.id}_driver`] === 'success' && <div className="w-2 h-2 rounded-full bg-green-500 ml-1"></div>}
+                                      {waMsgStatus[`${b.id}_driver`] === 'error' && <div className="w-2 h-2 rounded-full bg-red-500 ml-1"></div>}
+                                    </button>
+                                  ) : (
+                                    <a href={`https://wa.me/?text=${encodeURIComponent(driverMsg)}`} target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300 text-sm font-semibold border border-green-500/30 px-2 py-1 rounded bg-green-500/10 flex items-center gap-1" title="Share with Driver">
+                                      <i className="fa-brands fa-whatsapp"></i> Driver
                                     </a>
+                                  )}
+                                  
+                                  {b.status === 'confirmed' && (
+                                    waAutoMode ? (
+                                      <button 
+                                        onClick={() => handleAutoSend(b.id, 'customer', b.customerPhone, customerMsg)}
+                                        className="relative text-blue-400 hover:text-blue-300 text-sm font-semibold border border-blue-500/30 px-2 py-1 rounded bg-blue-500/10 flex items-center gap-1"
+                                        title="Auto-Send to Customer"
+                                      >
+                                        <i className="fa-brands fa-whatsapp"></i> Customer
+                                        {waMsgStatus[`${b.id}_customer`] === 'loading' && <i className="fa-solid fa-spinner fa-spin text-xs ml-1"></i>}
+                                        {waMsgStatus[`${b.id}_customer`] === 'success' && <div className="w-2 h-2 rounded-full bg-green-500 ml-1"></div>}
+                                        {waMsgStatus[`${b.id}_customer`] === 'error' && <div className="w-2 h-2 rounded-full bg-red-500 ml-1"></div>}
+                                      </button>
+                                    ) : (
+                                      <a href={`https://wa.me/${b.customerPhone.replace(/\D/g,'')}?text=${encodeURIComponent(customerMsg)}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 text-sm font-semibold border border-blue-500/30 px-2 py-1 rounded bg-blue-500/10 flex items-center gap-1" title="Confirm Customer">
+                                        <i className="fa-brands fa-whatsapp"></i> Customer
+                                      </a>
+                                    )
                                   )}
                                   {b.status === 'pending' && (
                                     <button onClick={() => handleOpenAssignModal(b.id)} className="text-taxi-yellow hover:text-white text-sm font-semibold border border-yellow-500/30 px-2 py-1 rounded bg-yellow-500/10">Confirm Booking</button>

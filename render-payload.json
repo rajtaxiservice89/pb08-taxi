@@ -1,0 +1,24 @@
+{
+  "autoDeploy": "yes",
+  "branch": "main",
+  "name": "pb08taxi-whatsapp",
+  "ownerId": "tea-d8nauu4vikkc73cndbn0",
+  "repo": "https://github.com/rajtaxiservice89/pb08-taxi",
+  "rootDir": "whatsapp-server",
+  "type": "web_service",
+  "envVars": [
+    {
+      "key": "WHATSAPP_API_KEY",
+      "value": "raj-taxi-secret-key-123"
+    }
+  ],
+  "serviceDetails": {
+    "env": "node",
+    "plan": "free",
+    "region": "oregon",
+    "envSpecificDetails": {
+      "buildCommand": "npm install",
+      "startCommand": "npm start"
+    }
+  }
+}
