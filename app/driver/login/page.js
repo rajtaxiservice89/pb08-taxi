@@ -41,7 +41,7 @@ export default function DriverLogin() {
 
   return (
     <div className="pt-24 pb-12 relative min-h-[90vh] flex items-center justify-center">
-      <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-taxi-yellow/10 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 -translate-x-1/2"></div>
+      <div className="hidden md:block absolute top-1/2 left-1/2 w-96 h-96 bg-taxi-yellow/10 rounded-full blur-[100px] pointer-events-none -translate-y-1/2 -translate-x-1/2"></div>
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="glass-panel w-full max-w-md mx-auto rounded-2xl p-8 border border-white/10">

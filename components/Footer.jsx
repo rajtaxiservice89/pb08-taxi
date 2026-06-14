@@ -6,7 +6,7 @@ export default function Footer() {
   return (
     <footer className="mt-auto relative overflow-hidden border-t border-white/10 bg-black/80 pt-16 pb-8">
       {/* Decorative gradient orb */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[200px] bg-taxi-yellow/10 blur-[100px] rounded-full pointer-events-none"></div>
+      <div className="hidden md:block absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[200px] bg-taxi-yellow/10 blur-[100px] rounded-full pointer-events-none"></div>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">

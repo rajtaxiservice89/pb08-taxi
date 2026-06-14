@@ -83,7 +83,7 @@ export default function DriverAttachment() {
 
   return (
     <div className="pt-24 pb-12 relative min-h-[90vh]">
-      <div className="absolute top-1/3 left-0 w-96 h-96 bg-taxi-yellow/5 rounded-full blur-[100px] pointer-events-none"></div>
+      <div className="hidden md:block absolute top-1/3 left-0 w-96 h-96 bg-taxi-yellow/5 rounded-full blur-[100px] pointer-events-none"></div>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center mb-12">

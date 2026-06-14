@@ -4,7 +4,7 @@ export default function Contact() {
   return (
     <div className="pt-24 pb-12 relative min-h-[90vh]">
       {/* Background Decor */}
-      <div className="absolute top-1/2 left-1/4 w-[500px] h-[500px] bg-taxi-yellow/5 rounded-full blur-[120px] pointer-events-none -translate-y-1/2 -translate-x-1/2"></div>
+      <div className="hidden md:block absolute top-1/2 left-1/4 w-[500px] h-[500px] bg-taxi-yellow/5 rounded-full blur-[120px] pointer-events-none -translate-y-1/2 -translate-x-1/2"></div>
       
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center mb-16">

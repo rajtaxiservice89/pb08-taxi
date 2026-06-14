@@ -525,7 +525,7 @@ export default function Booking() {
   return (
     <div className="pt-24 pb-12 relative min-h-[90vh]">
       {/* Background Decor */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-taxi-yellow/10 rounded-full blur-[100px] pointer-events-none"></div>
+      <div className="hidden md:block absolute top-1/4 left-1/4 w-96 h-96 bg-taxi-yellow/10 rounded-full blur-[100px] pointer-events-none"></div>
 
       <div className="container mx-auto px-4 relative z-10 flex justify-center items-center">
         <div className="glass-panel w-full max-w-5xl rounded-2xl p-6 md:p-10">

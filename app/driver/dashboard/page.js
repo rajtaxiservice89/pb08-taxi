@@ -136,7 +136,7 @@ function DashboardContent() {
 
   return (
     <div className="pt-24 pb-12 relative min-h-[90vh]">
-      <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-taxi-yellow/5 rounded-full blur-[150px] pointer-events-none"></div>
+      <div className="hidden md:block absolute top-0 right-1/4 w-[500px] h-[500px] bg-taxi-yellow/5 rounded-full blur-[150px] pointer-events-none"></div>
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="glass-panel w-full max-w-6xl mx-auto rounded-2xl p-6 lg:p-10 border border-white/10 shadow-2xl">

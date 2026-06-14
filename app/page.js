@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 
 // Revalidate this page every 60 seconds (or 0 for dynamic)
-export const revalidate = 0;
+export const revalidate = 60;
 
 export default async function Home() {
   let settings = null;
@@ -30,8 +30,8 @@ export default async function Home() {
     <div className="pt-24 pb-12 overflow-hidden relative">
       
       {/* Background Decorative Gradients */}
-      <div className="absolute top-1/4 left-0 w-96 h-96 bg-taxi-yellow/10 rounded-full blur-[120px] pointer-events-none"></div>
-      <div className="absolute top-1/2 right-0 w-96 h-96 bg-taxi-yellow/5 rounded-full blur-[100px] pointer-events-none"></div>
+      <div className="hidden md:block absolute top-1/4 left-0 w-96 h-96 bg-taxi-yellow/10 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="hidden md:block absolute top-1/2 right-0 w-96 h-96 bg-taxi-yellow/5 rounded-full blur-[100px] pointer-events-none"></div>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         

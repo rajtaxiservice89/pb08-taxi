@@ -20,15 +20,23 @@ body {
   /* Mobile Native Feel */
   overscroll-behavior-y: none;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 /* Explicit CSS to guarantee professional styling */
 .glass-panel {
   background-color: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+}
+
+@media (min-width: 768px) {
+  .glass-panel {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
 }
 
 .header-scrolled {
@@ -39,11 +47,18 @@ body {
 
 .glass-card {
   background-color: rgba(24, 24, 27, 0.6);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   border: 1px solid rgba(255, 215, 0, 0.2);
   border-radius: 1rem;
   transition: all 0.3s ease;
+}
+
+@media (min-width: 768px) {
+  .glass-card {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
 }
 
 .glass-card:hover {
