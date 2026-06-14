@@ -103,6 +103,7 @@ export default function AdminDashboard() {
     const interval = setInterval(() => {
       fetchBookings(false);
       fetchDrivers(false);
+      fetchWaStatus(false);
     }, 5000);
 
     if (activeTab === 'cms') fetchSettings();
@@ -138,18 +139,18 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchWaStatus = async () => {
-    setWaStatus(prev => ({ ...prev, loading: true }));
+  const fetchWaStatus = async (showLoading = true) => {
+    if (showLoading) setWaStatus(prev => ({ ...prev, loading: true }));
     try {
       const res = await fetch('/api/admin/whatsapp');
       if (res.ok) {
         const data = await res.json();
         setWaStatus({ isConnected: data.isConnected, hasQR: data.hasQR, qr: data.qr, loading: false });
       } else {
-        setWaStatus(prev => ({ ...prev, loading: false }));
+        if (showLoading) setWaStatus(prev => ({ ...prev, loading: false }));
       }
     } catch {
-      setWaStatus(prev => ({ ...prev, loading: false }));
+      if (showLoading) setWaStatus(prev => ({ ...prev, loading: false }));
     }
   };
 
@@ -728,17 +729,17 @@ export default function AdminDashboard() {
                 {pendingBookingsCount > 0 && <span className={`ml-auto text-xs font-bold px-2 py-0.5 rounded-full ${activeTab === 'bookings' ? 'bg-red-500 text-white' : 'bg-red-500/80 text-white'}`}>{pendingBookingsCount}</span>}
               </button>
               <button 
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'cms' ? 'bg-taxi-yellow text-black shadow-[0_0_15px_rgba(255,215,0,0.3)]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
-                onClick={() => setActiveTab('cms')}
-              >
-                <i className="fa-solid fa-pen-to-square w-5 text-center"></i> Website Content (CMS)
-              </button>
-              <button 
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'drivers' ? 'bg-taxi-yellow text-black shadow-[0_0_15px_rgba(255,215,0,0.3)]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
                 onClick={() => setActiveTab('drivers')}
               >
                 <i className="fa-solid fa-id-card w-5 text-center"></i> Driver Directory
                 {pendingDriversCount > 0 && <span className={`ml-auto text-xs font-bold px-2 py-0.5 rounded-full ${activeTab === 'drivers' ? 'bg-red-500 text-white' : 'bg-red-500/80 text-white'}`}>{pendingDriversCount}</span>}
+              </button>
+              <button 
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'cms' ? 'bg-taxi-yellow text-black shadow-[0_0_15px_rgba(255,215,0,0.3)]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                onClick={() => setActiveTab('cms')}
+              >
+                <i className="fa-solid fa-pen-to-square w-5 text-center"></i> Website Content (CMS)
               </button>
               <button 
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'fare' ? 'bg-taxi-yellow text-black shadow-[0_0_15px_rgba(255,215,0,0.3)]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
@@ -764,10 +765,28 @@ export default function AdminDashboard() {
             <div className="flex-1 p-6 lg:p-10">
               {activeTab === 'bookings' && (
                 <div className="animate-[fadeInUp_0.3s_ease]">
-                  <div className="flex justify-between items-center mb-6">
-                    <div>
+                  <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+                    <div className="flex items-center gap-4">
                       <h3 className="text-2xl font-bold text-white">Live Bookings</h3>
-                      <p className="text-gray-400 text-sm">Monitor and manage ride requests</p>
+                      
+                      {/* Server Status Indicator */}
+                      <div className="flex gap-2 items-center bg-black/40 px-3 py-1.5 rounded-lg border border-white/5">
+                        <h4 className="text-sm font-bold text-[#25D366] hidden sm:flex items-center gap-2 mr-1">
+                          <i className="fa-brands fa-whatsapp text-lg"></i>
+                        </h4>
+                        <button onClick={() => fetchWaStatus(true)} className="text-gray-400 hover:text-white transition-colors" title="Refresh Status">
+                          <i className={`fa-solid fa-rotate-right ${waStatus.loading ? 'animate-spin text-taxi-yellow' : ''}`}></i>
+                        </button>
+                        {waStatus.isConnected ? (
+                          <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs font-bold border border-green-500/30 flex items-center gap-1.5 ml-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> ONLINE
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-bold border border-red-500/30 flex items-center gap-1.5 ml-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> OFFLINE
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-xl border border-white/10">
@@ -1272,11 +1291,32 @@ export default function AdminDashboard() {
               {activeTab === 'drivers' && (
                 <div className="animate-[fadeInUp_0.3s_ease]">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                    <div>
-                      <h3 className="text-2xl font-bold text-white">Driver Directory</h3>
-                      <p className="text-gray-400 text-sm">Manage drivers, approvals, and vehicle data</p>
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <div>
+                        <h3 className="text-2xl font-bold text-white">Driver Directory</h3>
+                        <p className="text-gray-400 text-sm hidden md:block">Manage drivers, approvals, and vehicle data</p>
+                      </div>
+                      
+                      {/* Server Status Indicator */}
+                      <div className="flex gap-2 items-center bg-black/40 px-3 py-1.5 rounded-lg border border-white/5 h-fit mt-1">
+                        <h4 className="text-sm font-bold text-[#25D366] hidden sm:flex items-center gap-2 mr-1">
+                          <i className="fa-brands fa-whatsapp text-lg"></i>
+                        </h4>
+                        <button onClick={() => fetchWaStatus(true)} className="text-gray-400 hover:text-white transition-colors" title="Refresh Status">
+                          <i className={`fa-solid fa-rotate-right ${waStatus.loading ? 'animate-spin text-taxi-yellow' : ''}`}></i>
+                        </button>
+                        {waStatus.isConnected ? (
+                          <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs font-bold border border-green-500/30 flex items-center gap-1.5 ml-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> ONLINE
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 bg-red-500/20 text-red-400 rounded text-xs font-bold border border-red-500/30 flex items-center gap-1.5 ml-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> OFFLINE
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-4">
                       {/* WhatsApp Auto Toggle */}
                       <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-full border border-white/10">
                         <span className={`text-xs font-bold ${!waAutoMode ? 'text-white' : 'text-gray-500'}`}>Manual</span>
