@@ -30,24 +30,7 @@ export default function Booking() {
     setFormData(prev => ({ ...prev, [id]: value }));
   };
 
-  const geocode = async (q) => {
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=in`;
-      const response = await fetch(url);
-      const data = await response.json();
-      if(data && data.length > 0) {
-         return {
-            display: data[0].display_name,
-            lat: parseFloat(data[0].lat),
-            lng: parseFloat(data[0].lon)
-         };
-      }
-      return null;
-    } catch (e) {
-      console.error("Geocode error", e);
-      return null;
-    }
-  };
+
 
   const handleKeyDown = async (e, type) => {
     if (e.key === 'Enter') {
