@@ -38,8 +38,8 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
-        <link rel="apple-touch-icon" href="/images/taxi1.png" />
-        <link rel="icon" href="/images/taxi1.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/images/Logo_PB08TAXI.png" />
+        <link rel="icon" href="/images/Logo_PB08TAXI.png" type="image/png" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
         <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
       </head>
