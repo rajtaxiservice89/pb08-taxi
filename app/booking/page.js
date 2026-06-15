@@ -777,47 +777,49 @@ export default function Booking() {
                 </div>
               </div>
 
-              {/* Map Section */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 relative z-50">
-                {/* Pickup Map */}
-                <div className="bg-black/30 p-4 rounded-xl border border-white/10 relative">
-                  <label className="form-label mb-3 flex justify-between items-center">
-                    <span><i className="fa-solid fa-location-crosshairs text-taxi-yellow mr-2"></i> Pickup Location</span>
-                  </label>
-                  <div className="mb-3 relative">
-                    <div className="flex gap-2">
-                      <input type="text" id="pickup" className="input-modern flex-grow" defaultValue={formData.pickup} onBlur={(e) => setFormData(prev => ({...prev, pickup: e.target.value}))} onKeyDown={(e) => handleKeyDown(e, 'pickup')} required placeholder="Search pickup (Press Enter)" />
-                      <button type="button" onClick={() => handleKeyDown({ key: 'Enter', preventDefault: () => {} }, 'pickup')} className="bg-taxi-yellow text-black font-bold px-4 rounded-lg hover:bg-yellow-400 transition-colors shadow-lg" title="Set Location">
-                        Set
-                      </button>
-                      <button type="button" onClick={handleCurrentLocation} className="bg-white/10 hover:bg-white/20 text-white px-4 rounded-lg transition-colors border border-white/10" title="Use Current Location">
-                        <i className="fa-solid fa-location-crosshairs text-taxi-yellow"></i>
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-400 text-center mt-2 italic">Press Enter to search, or click on the map below</p>
-                </div>
-
-                {/* Drop Map */}
-                <div className="bg-black/30 p-4 rounded-xl border border-white/10 relative">
-                  <label className="form-label mb-3 flex justify-between items-center">
-                    <span><i className="fa-solid fa-location-dot text-red-500 mr-2"></i> Drop-off Location</span>
-                  </label>
-                  <div className="mb-3 relative">
-                    <div className="flex gap-2">
-                      <input type="text" id="destination" className="input-modern flex-grow" defaultValue={formData.destination} onBlur={(e) => setFormData(prev => ({...prev, destination: e.target.value}))} onKeyDown={(e) => handleKeyDown(e, 'destination')} required placeholder="Search destination (Press Enter)" />
-                      <button type="button" onClick={() => handleKeyDown({ key: 'Enter', preventDefault: () => {} }, 'destination')} className="bg-taxi-yellow text-black font-bold px-4 rounded-lg hover:bg-yellow-400 transition-colors shadow-lg" title="Set Location">
-                        Set
+              {/* Ola-style Map & Booking Section */}
+              <div className="relative mt-6 rounded-2xl overflow-hidden border border-white/10 shadow-2xl flex flex-col md:flex-row h-[500px] z-50">
+                
+                {/* Side Panel for Inputs */}
+                <div className="w-full md:w-1/3 bg-[#111] p-6 flex flex-col z-10 border-b md:border-b-0 md:border-r border-white/10 shadow-2xl relative">
+                  <h3 className="text-xl font-bold text-white mb-6">Where to?</h3>
+                  
+                  <div className="relative flex flex-col gap-5">
+                    {/* Connecting Line */}
+                    <div className="absolute left-[11px] top-[24px] bottom-[24px] w-[2px] bg-gray-800 z-0"></div>
+                    
+                    {/* Pickup Input Group */}
+                    <div className="relative z-10 flex items-center bg-black border border-white/10 rounded-lg p-3 focus-within:border-taxi-yellow transition-colors shadow-inner">
+                      <div className="w-6 flex justify-center mr-2">
+                         <div className="w-3 h-3 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                      </div>
+                      <input type="text" id="pickup" className="bg-transparent border-none outline-none text-white w-full text-sm placeholder-gray-500" defaultValue={formData.pickup} onBlur={(e) => setFormData(prev => ({...prev, pickup: e.target.value}))} onKeyDown={(e) => handleKeyDown(e, 'pickup')} required placeholder="Search Pickup Location" />
+                      <button type="button" onClick={handleCurrentLocation} className="text-gray-400 hover:text-taxi-yellow px-2 transition-colors" title="Use Current Location">
+                        <i className="fa-solid fa-location-crosshairs"></i>
                       </button>
                     </div>
-                  </div>
-                  <p className="text-xs text-gray-400 text-center mt-2 italic">Press Enter to search, or click on the map below</p>
-                </div>
-              </div>
 
-              {/* Single Main Map */}
-              <div className="relative mt-2">
-                <div id="mainMap" ref={mapRef} className="w-full h-80 lg:h-96 rounded-xl border border-white/20 relative overflow-hidden shadow-2xl" style={{ background: '#222' }}></div>
+                    {/* Drop Input Group */}
+                    <div className="relative z-10 flex items-center bg-black border border-white/10 rounded-lg p-3 focus-within:border-red-500 transition-colors shadow-inner">
+                      <div className="w-6 flex justify-center mr-2">
+                         <div className="w-3 h-3 bg-red-500 rounded-sm shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>
+                      </div>
+                      <input type="text" id="destination" className="bg-transparent border-none outline-none text-white w-full text-sm placeholder-gray-500" defaultValue={formData.destination} onBlur={(e) => setFormData(prev => ({...prev, destination: e.target.value}))} onKeyDown={(e) => handleKeyDown(e, 'destination')} required placeholder="Search Drop Location" />
+                    </div>
+                  </div>
+                  
+                  <div className="mt-auto pt-6">
+                    <p className="text-[11px] text-gray-500 leading-tight text-center bg-white/5 p-3 rounded-lg border border-white/5">
+                      <i className="fa-solid fa-circle-info mr-1"></i> Select from suggestions or press Enter. You can also click the map to set a pin.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Main Map */}
+                <div className="w-full md:w-2/3 h-full relative bg-[#222]">
+                  <div id="mainMap" ref={mapRef} className="w-full h-full absolute inset-0"></div>
+                </div>
+
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
