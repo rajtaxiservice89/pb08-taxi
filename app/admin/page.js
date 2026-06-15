@@ -248,12 +248,7 @@ export default function AdminDashboard() {
 
   const handleAddLocationApi = async () => {
     let payload = { ...newApi };
-    if (payload.provider === 'mappls') {
-      if(!mapplsKeys.clientId || !mapplsKeys.clientSecret) return alert("Both Client ID and Client Secret are required for Mappls");
-      payload.apiKey = JSON.stringify(mapplsKeys);
-    } else {
-      if(!payload.apiKey && payload.provider !== 'nominatim') return alert("API Key is required");
-    }
+    if(!payload.apiKey && payload.provider !== 'nominatim') return alert("API Key is required");
 
     try {
       const res = await fetch('/api/admin/settings/location-apis', {
@@ -1141,33 +1136,14 @@ export default function AdminDashboard() {
                         <option value="nominatim">Nominatim (Free, No Key required)</option>
                       </select>
                       
-                      {newApi.provider === 'mappls' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-                          <input 
-                            type="text" 
-                            placeholder="Mappls Client ID" 
-                            className="input-modern bg-black/30"
-                            value={mapplsKeys.clientId}
-                            onChange={(e) => setMapplsKeys({...mapplsKeys, clientId: e.target.value})}
-                          />
-                          <input 
-                            type="password" 
-                            placeholder="Mappls Client Secret" 
-                            className="input-modern bg-black/30"
-                            value={mapplsKeys.clientSecret}
-                            onChange={(e) => setMapplsKeys({...mapplsKeys, clientSecret: e.target.value})}
-                          />
-                        </div>
-                      ) : (
                         <input 
                           type="text" 
-                          placeholder={newApi.provider === 'nominatim' ? "API Key not needed" : "Enter API Key"} 
+                          placeholder={newApi.provider === 'nominatim' ? "API Key not needed" : "Enter API Key (Static Key)"} 
                           className="input-modern bg-black/30 w-full"
                           value={newApi.apiKey}
                           disabled={newApi.provider === 'nominatim'}
                           onChange={(e) => setNewApi({...newApi, apiKey: e.target.value})}
                         />
-                      )}
                       
                       <button onClick={handleAddLocationApi} className="btn-primary w-full md:w-auto mt-2">
                         <i className="fa-solid fa-plus mr-2"></i> Add API
