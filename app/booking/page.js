@@ -329,12 +329,7 @@ export default function Booking() {
                  lng: parseFloat(item.lon)
               }));
            }
-         const res = await fetch(url);
-         const data = await res.json();
-         if (data && data.length > 0) {
-            return data.map(r => ({ lat: parseFloat(r.lat), lng: parseFloat(r.lon), display: r.display_name }));
-         }
-         return [];
+           return [];
       }
 
       let keys = [locationApiConfig.apiKey];
