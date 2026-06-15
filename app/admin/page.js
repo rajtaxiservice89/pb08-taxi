@@ -1097,14 +1097,16 @@ export default function AdminDashboard() {
                       onChange={(e) => setLocationApiPinInput(e.target.value)}
                       onKeyDown={(e) => {
                         if(e.key === 'Enter') {
-                          if(locationApiPinInput === settings?.secretPin) setIsLocationApisUnlocked(true);
+                          const expectedPin = settings?.secretPin || '333725';
+                          if(locationApiPinInput === expectedPin) setIsLocationApisUnlocked(true);
                           else { alert('Incorrect PIN!'); setLocationApiPinInput(''); }
                         }
                       }}
                     />
                     <button 
                       onClick={() => {
-                        if(locationApiPinInput === settings?.secretPin) setIsLocationApisUnlocked(true);
+                        const expectedPin = settings?.secretPin || '333725';
+                        if(locationApiPinInput === expectedPin) setIsLocationApisUnlocked(true);
                         else { alert('Incorrect PIN!'); setLocationApiPinInput(''); }
                       }} 
                       className="btn-primary w-full"
