@@ -618,20 +618,18 @@ export default function Booking() {
                 const name = r.placeName || r.placeAddress || r.eLoc || r.name || '';
                 const eLoc = r.eLoc || r.mapplsPin || r.poiId;
 
-                // If coordinates are missing but we have eLoc, we can try to get them via mappls API or Nominatim
-                // But usually, Mappls autosuggest returns them.
-                if ((!lat || !lng) && eLoc && window.mappls.getPinDetails) {
-                    try {
-                        await new Promise(resolve => {
-                            window.mappls.getPinDetails({pin: eLoc}, (data) => {
-                                if (data && data.data && data.data.length > 0) {
-                                    lat = parseFloat(data.data[0].latitude || lat);
-                                    lng = parseFloat(data.data[0].longitude || lng);
-                                }
-                                resolve();
-                            });
-                        });
-                    } catch(e) { console.error(e); }
+                // If coordinates are still missing after the plugin fires, 
+                // the plugin (since we passed map) will have already centered the map there.
+                // We can wait a tiny bit and grab the map center!
+                if (!lat || !lng) {
+                    if (mapInstance.current) {
+                       await new Promise(res => setTimeout(res, 300));
+                       const center = mapInstance.current.getCenter();
+                       if (center) {
+                           lat = center.lat;
+                           lng = center.lng;
+                       }
+                    }
                 }
 
                 if (lat && lng) {
@@ -645,7 +643,7 @@ export default function Booking() {
                         mapInstance.current.setZoom(14);
                     }
                 } else {
-                    // Fallback to our backend geocode if Mappls fails to provide coordinates
+                    // Final fallback
                     const fallbackData = await geocode(name);
                     if (fallbackData) {
                         if (type === 'pickup') setPickup(fallbackData.lng, fallbackData.lat, name);
@@ -669,11 +667,16 @@ export default function Booking() {
 
             const pInput = document.getElementById('pickup');
             if (pInput) {
-                new window.mappls.search(pInput, { keyword: '' }, (data) => handlePluginData('pickup', data));
+               new window.mappls.search(pInput, { map: mapInstance.current, filter: "cop:IN" }, (data) => {
+                  handlePluginData('pickup', data);
+               });
             }
+
             const dInput = document.getElementById('destination');
             if (dInput) {
-                new window.mappls.search(dInput, { keyword: '' }, (data) => handlePluginData('destination', data));
+               new window.mappls.search(dInput, { map: mapInstance.current, filter: "cop:IN" }, (data) => {
+                  handlePluginData('destination', data);
+               });
             }
           }, 1000);
        }
