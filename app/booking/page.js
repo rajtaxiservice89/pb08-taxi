@@ -284,8 +284,13 @@ export default function Booking() {
       if (locationApiConfig.provider === 'mappls') {
            // Fallback to nominatim for reverse geocode since Mappls REST requires OAuth
            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
-           const response = await fetch(url, { headers: { 'User-Agent': 'RajTaxiApp/1.0' } });
+           const response = await fetch(url);
            const data = await response.json();
+           if (data && data.address) {
+               const { road, suburb, neighbourhood, city, town, village, state } = data.address;
+               const parts = [road, neighbourhood || suburb, village || town || city, state].filter(Boolean);
+               if (parts.length > 0) return parts.join(', ');
+           }
            return data && data.display_name ? data.display_name : "Location found";
       }
 
@@ -322,7 +327,7 @@ export default function Booking() {
       if (locationApiConfig.provider === 'mappls') {
            // Fallback to nominatim
            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=in`;
-           const response = await fetch(url, { headers: { 'User-Agent': 'RajTaxiApp/1.0' } });
+           const response = await fetch(url);
            const data = await response.json();
            if(data && data.length > 0) {
               return data.map(item => ({
