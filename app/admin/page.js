@@ -21,6 +21,9 @@ export default function AdminDashboard() {
   // Location APIs State
   const [locationApis, setLocationApis] = useState([]);
   const [newApi, setNewApi] = useState({ provider: 'locationiq', apiKey: '' });
+  const [mapplsKeys, setMapplsKeys] = useState({ clientId: '', clientSecret: '' });
+  const [isLocationApisUnlocked, setIsLocationApisUnlocked] = useState(false);
+  const [locationApiPinInput, setLocationApiPinInput] = useState('');
 
   // WhatsApp State
   const [waStatus, setWaStatus] = useState({ isConnected: false, hasQR: false, qr: null, loading: false });
@@ -244,7 +247,14 @@ export default function AdminDashboard() {
   };
 
   const handleAddLocationApi = async () => {
-    if(!newApi.apiKey) return alert("API Key is required");
+    let payload = { ...newApi };
+    if (payload.provider === 'mappls') {
+      if(!mapplsKeys.clientId || !mapplsKeys.clientSecret) return alert("Both Client ID and Client Secret are required for Mappls");
+      payload.apiKey = JSON.stringify(mapplsKeys);
+    } else {
+      if(!payload.apiKey && payload.provider !== 'nominatim') return alert("API Key is required");
+    }
+
     try {
       const res = await fetch('/api/admin/settings/location-apis', {
         method: 'POST',
@@ -253,6 +263,7 @@ export default function AdminDashboard() {
       });
       if(res.ok) {
         setNewApi({ provider: 'locationiq', apiKey: '' });
+        setMapplsKeys({ clientId: '', clientSecret: '' });
         fetchLocationApis();
       } else alert("Failed to add API");
     } catch(e) { alert("Error adding API"); }
@@ -1076,34 +1087,89 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {activeTab === 'location-api' && (
+              {activeTab === 'location-api' && !isLocationApisUnlocked && (
+                <div className="flex flex-col items-center justify-center py-20 animate-[fadeIn_0.3s_ease]">
+                  <div className="bg-black/40 border border-white/10 p-8 rounded-2xl w-full max-w-md text-center">
+                    <i className="fa-solid fa-lock text-4xl text-taxi-yellow mb-4"></i>
+                    <h3 className="text-xl font-bold text-white mb-2">Protected Area</h3>
+                    <p className="text-gray-400 text-sm mb-6">Enter Admin Secret PIN to manage APIs.</p>
+                    <input 
+                      type="password" 
+                      placeholder="Enter 6-digit PIN"
+                      maxLength={6}
+                      className="input-modern mb-4 text-center tracking-[0.5em] text-lg font-bold"
+                      value={locationApiPinInput}
+                      onChange={(e) => setLocationApiPinInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if(e.key === 'Enter') {
+                          if(locationApiPinInput === settings?.secretPin) setIsLocationApisUnlocked(true);
+                          else { alert('Incorrect PIN!'); setLocationApiPinInput(''); }
+                        }
+                      }}
+                    />
+                    <button 
+                      onClick={() => {
+                        if(locationApiPinInput === settings?.secretPin) setIsLocationApisUnlocked(true);
+                        else { alert('Incorrect PIN!'); setLocationApiPinInput(''); }
+                      }} 
+                      className="btn-primary w-full"
+                    >
+                      Unlock <i className="fa-solid fa-unlock ml-2"></i>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'location-api' && isLocationApisUnlocked && (
                 <div className="animate-[fadeInUp_0.3s_ease] space-y-6">
                   <div>
                     <h3 className="text-2xl font-bold text-white mb-2">Location APIs</h3>
-                    <p className="text-gray-400 text-sm">Manage Geocoding API keys (LocationIQ, Mapbox, Nominatim)</p>
+                    <p className="text-gray-400 text-sm">Manage Geocoding & Routing API keys (Mappls, LocationIQ, Mapbox, Nominatim)</p>
                   </div>
 
                   <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative overflow-hidden group">
                     <h4 className="text-lg font-bold text-taxi-yellow mb-4">Add New Location API</h4>
-                    <div className="flex flex-col md:flex-row gap-4 mb-4">
+                    <div className="flex flex-col gap-4 mb-4">
                       <select 
-                        className="input-modern bg-black/30 md:w-1/3"
+                        className="input-modern bg-black/30 w-full md:w-1/3"
                         value={newApi.provider}
                         onChange={(e) => setNewApi({...newApi, provider: e.target.value})}
                       >
+                        <option value="mappls">Mappls (MapmyIndia)</option>
                         <option value="locationiq">LocationIQ</option>
                         <option value="mapbox">Mapbox</option>
                         <option value="nominatim">Nominatim (Free, No Key required)</option>
                       </select>
-                      <input 
-                        type="text" 
-                        placeholder={newApi.provider === 'nominatim' ? "API Key not needed" : "Enter API Key"} 
-                        className="input-modern bg-black/30 flex-1"
-                        value={newApi.apiKey}
-                        disabled={newApi.provider === 'nominatim'}
-                        onChange={(e) => setNewApi({...newApi, apiKey: e.target.value})}
-                      />
-                      <button onClick={handleAddLocationApi} className="btn-primary whitespace-nowrap">
+                      
+                      {newApi.provider === 'mappls' ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                          <input 
+                            type="text" 
+                            placeholder="Mappls Client ID" 
+                            className="input-modern bg-black/30"
+                            value={mapplsKeys.clientId}
+                            onChange={(e) => setMapplsKeys({...mapplsKeys, clientId: e.target.value})}
+                          />
+                          <input 
+                            type="password" 
+                            placeholder="Mappls Client Secret" 
+                            className="input-modern bg-black/30"
+                            value={mapplsKeys.clientSecret}
+                            onChange={(e) => setMapplsKeys({...mapplsKeys, clientSecret: e.target.value})}
+                          />
+                        </div>
+                      ) : (
+                        <input 
+                          type="text" 
+                          placeholder={newApi.provider === 'nominatim' ? "API Key not needed" : "Enter API Key"} 
+                          className="input-modern bg-black/30 w-full"
+                          value={newApi.apiKey}
+                          disabled={newApi.provider === 'nominatim'}
+                          onChange={(e) => setNewApi({...newApi, apiKey: e.target.value})}
+                        />
+                      )}
+                      
+                      <button onClick={handleAddLocationApi} className="btn-primary w-full md:w-auto mt-2">
                         <i className="fa-solid fa-plus mr-2"></i> Add API
                       </button>
                     </div>
