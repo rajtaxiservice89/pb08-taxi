@@ -528,9 +528,9 @@ export default function Booking() {
 
     if (locationApiConfig.provider === 'mappls') {
        if (!window.mappls) return;
-       // Mappls Native Map
-       pMapInstance.current = new window.mappls.Map(pickupMapRef.current, { center: [initial.lat, initial.lng], zoom: initial.zoom });
-       dMapInstance.current = new window.mappls.Map(dropMapRef.current, { center: [initial.lat, initial.lng], zoom: initial.zoom });
+       // Mappls Native Map accepts ID strings, not DOM nodes
+       pMapInstance.current = new window.mappls.Map('pickupMap', { center: [initial.lat, initial.lng], zoom: initial.zoom });
+       dMapInstance.current = new window.mappls.Map('dropMap', { center: [initial.lat, initial.lng], zoom: initial.zoom });
        
        pMapInstance.current.addListener('click', async (e) => {
           const lat = e.lngLat.lat, lng = e.lngLat.lng;
