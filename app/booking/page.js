@@ -16,20 +16,57 @@ export default function Booking() {
   const [configLoaded, setConfigLoaded] = useState(false);
   
   
-  const pickupMapRef = useRef(null);
-  const dropMapRef = useRef(null);
+  const mapRef = useRef(null);
   
   const mapLibreRef = useRef(null);
   const pickupMarkerRef = useRef(null);
   const destMarkerRef = useRef(null);
   const routeSourceId = 'osrm-route';
   const routeLayerId = 'osrm-route-line';
-  const pMapInstance = useRef(null);
-  const dMapInstance = useRef(null);
+  const mapInstance = useRef(null);
 
   const handleChange = (e) => {
     const { id, value } = e.target;
     setFormData(prev => ({ ...prev, [id]: value }));
+  };
+
+  const geocode = async (q) => {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=in`;
+      const response = await fetch(url);
+      const data = await response.json();
+      if(data && data.length > 0) {
+         return {
+            display: data[0].display_name,
+            lat: parseFloat(data[0].lat),
+            lng: parseFloat(data[0].lon)
+         };
+      }
+      return null;
+    } catch (e) {
+      console.error("Geocode error", e);
+      return null;
+    }
+  };
+
+  const handleKeyDown = async (e, type) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const query = type === 'pickup' ? formData.pickup : formData.destination;
+      if (!query.trim()) return;
+      const r = await geocode(query);
+      if (r) {
+        if (type === 'pickup') {
+          setPickup(r.lng, r.lat, r.display);
+          if (mapInstance.current) mapInstance.current.flyTo({ center: [r.lng, r.lat], zoom: 14 });
+        } else {
+          setDest(r.lng, r.lat, r.display);
+          if (mapInstance.current) mapInstance.current.flyTo({ center: [r.lng, r.lat], zoom: 14 });
+        }
+      } else {
+        alert("Location not found. Please try zooming in and clicking on the map manually.");
+      }
+    }
   };
 
   useEffect(() => {
@@ -165,8 +202,7 @@ export default function Booking() {
           geometry: route.geometry
         };
 
-        drawRouteOnMap(pMapInstance.current, geojson);
-        drawRouteOnMap(dMapInstance.current, geojson);
+        drawRouteOnMap(mapInstance.current, geojson);
       }
     } catch (err) {
       console.error("Failed to fetch route", err);
@@ -430,7 +466,7 @@ export default function Booking() {
         try { pickupMarkerRef.current.setMap(null); } catch(e) {}
     }
     if (locationApiConfig.provider === 'mappls') {
-       pickupMarkerRef.current = new window.mappls.Marker({ map: pMapInstance.current, position: {lat, lng}, draggable: true, icon: 'https://apis.mapmyindia.com/map_v3/1.png' });
+       pickupMarkerRef.current = new window.mappls.Marker({ map: mapInstance.current, position: {lat, lng}, draggable: true, icon: 'https://apis.mapmyindia.com/map_v3/1.png' });
        const attachDrag = (m) => m.addListener ? m.addListener('dragend', async () => {
           const ll = pickupMarkerRef.current.getPosition();
           const a = await revGeocode(ll.lat, ll.lng);
@@ -444,7 +480,7 @@ export default function Booking() {
     } else {
        pickupMarkerRef.current = new mapLibreRef.current.Marker({ color: '#22c55e', draggable: true })
          .setLngLat([lng, lat])
-         .addTo(pMapInstance.current);
+         .addTo(mapInstance.current);
        pickupMarkerRef.current.on('dragend', async () => {
          const ll = pickupMarkerRef.current.getLngLat();
          const a = await revGeocode(ll.lat, ll.lng);
@@ -460,7 +496,7 @@ export default function Booking() {
         try { destMarkerRef.current.setMap(null); } catch(e) {}
     }
     if (locationApiConfig.provider === 'mappls') {
-       destMarkerRef.current = new window.mappls.Marker({ map: dMapInstance.current, position: {lat, lng}, draggable: true, icon: 'https://apis.mapmyindia.com/map_v3/2.png' });
+       destMarkerRef.current = new window.mappls.Marker({ map: mapInstance.current, position: {lat, lng}, draggable: true, icon: 'https://apis.mapmyindia.com/map_v3/2.png' });
        const attachDrag = (m) => m.addListener ? m.addListener('dragend', async () => {
           const ll = destMarkerRef.current.getPosition();
           const a = await revGeocode(ll.lat, ll.lng);
@@ -474,7 +510,7 @@ export default function Booking() {
     } else {
        destMarkerRef.current = new mapLibreRef.current.Marker({ color: '#ef4444', draggable: true })
          .setLngLat([lng, lat])
-         .addTo(dMapInstance.current);
+         .addTo(mapInstance.current);
        destMarkerRef.current.on('dragend', async () => {
          const ll = destMarkerRef.current.getLngLat();
          const a = await revGeocode(ll.lat, ll.lng);
@@ -484,9 +520,9 @@ export default function Booking() {
   };
 
   const initMaps = () => {
-    if (!pickupMapRef.current || !dropMapRef.current) return;
+    if (!mapRef.current) return;
     if (locationApiConfig.provider !== 'mappls' && !mapLibreRef.current) return;
-    if (pMapInstance.current) return; // already init
+    if (mapInstance.current) return; // already init
 
     const initial = { lng: 75.5762, lat: 31.3260, zoom: 12 };
     
@@ -524,26 +560,18 @@ export default function Booking() {
     if (locationApiConfig.provider === 'mappls') {
        if (!window.mappls) return;
        try {
-           pMapInstance.current = new window.mappls.Map('pickupMap', { center: [initial.lat, initial.lng], zoom: initial.zoom });
-           dMapInstance.current = new window.mappls.Map('dropMap', { center: [initial.lat, initial.lng], zoom: initial.zoom });
+           mapInstance.current = new window.mappls.Map('mainMap', { center: [initial.lat, initial.lng], zoom: initial.zoom });
            
-           const attachMapClick = (map, setter) => {
-               if (map.addListener) {
-                   map.addListener('click', async (e) => {
-                       const lat = e.lngLat.lat, lng = e.lngLat.lng;
-                       const a = await revGeocode(lat, lng);
-                       setter(lng, lat, a);
-                   });
-               } else if (map.on) {
-                   map.on('click', async (e) => {
-                       const lat = e.lngLat.lat, lng = e.lngLat.lng;
-                       const a = await revGeocode(lat, lng);
-                       setter(lng, lat, a);
-                   });
-               }
-           };
-           attachMapClick(pMapInstance.current, setPickup);
-           attachMapClick(dMapInstance.current, setDest);
+           mapInstance.current.addListener('click', async (e) => {
+             const lat = e.lngLat.lat; const lng = e.lngLat.lng;
+             const a = await revGeocode(lat, lng);
+             // By default set pickup if it's empty, else drop
+             if (!formData.pickup || formData.pickup === 'Fetching current location...') {
+                 setPickup(lng, lat, a);
+             } else {
+                 setDest(lng, lat, a);
+             }
+           });
        } catch (err) {
            console.error("Mappls Init Error:", err);
        }
@@ -555,14 +583,14 @@ export default function Booking() {
                if(data && data.length > 0) {
                   const r = data[0];
                   setPickup(r.longitude, r.latitude, r.placeName);
-                  pMapInstance.current.setCenter({lat: r.latitude, lng: r.longitude});
+                  if(mapInstance.current) mapInstance.current.setCenter({lat: r.latitude, lng: r.longitude});
                }
             });
             new window.mappls.search({ keyword: '', input: 'destination' }, (data) => {
                if(data && data.length > 0) {
                   const r = data[0];
                   setDest(r.longitude, r.latitude, r.placeName);
-                  dMapInstance.current.setCenter({lat: r.latitude, lng: r.longitude});
+                  if(mapInstance.current) mapInstance.current.setCenter({lat: r.latitude, lng: r.longitude});
                }
             });
           }, 1000);
@@ -570,26 +598,20 @@ export default function Booking() {
        
     } else {
        // MapLibre Maps
-       pMapInstance.current = new mapLibreRef.current.Map({
-         container: pickupMapRef.current, style: finalStyle, center: [initial.lng, initial.lat], zoom: initial.zoom,
-       });
-       dMapInstance.current = new mapLibreRef.current.Map({
-         container: dropMapRef.current, style: finalStyle, center: [initial.lng, initial.lat], zoom: initial.zoom,
+       mapInstance.current = new mapLibreRef.current.Map({
+         container: mapRef.current, style: finalStyle, center: [initial.lng, initial.lat], zoom: initial.zoom,
        });
 
-       pMapInstance.current.addControl(new mapLibreRef.current.NavigationControl(), 'top-right');
-       dMapInstance.current.addControl(new mapLibreRef.current.NavigationControl(), 'top-right');
+       mapInstance.current.addControl(new mapLibreRef.current.NavigationControl(), 'top-right');
 
-       pMapInstance.current.on('click', async (e) => {
+       mapInstance.current.on('click', async (e) => {
          const {lng, lat} = e.lngLat; 
          const a = await revGeocode(lat, lng); 
-         setPickup(lng, lat, a);
-       });
-       
-       dMapInstance.current.on('click', async (e) => {
-         const {lng, lat} = e.lngLat; 
-         const a = await revGeocode(lat, lng); 
-         setDest(lng, lat, a);
+         if (!formData.pickup || formData.pickup === 'Fetching current location...') {
+             setPickup(lng, lat, a);
+         } else {
+             setDest(lng, lat, a);
+         }
        });
     }
   };
@@ -603,7 +625,7 @@ export default function Booking() {
     
     navigator.geolocation.getCurrentPosition(async pos => {
       const lat = pos.coords.latitude, lng = pos.coords.longitude;
-      if(pMapInstance.current) pMapInstance.current.flyTo({ center: [lng, lat], zoom: 15 });
+      if(mapInstance.current) mapInstance.current.flyTo({ center: [lng, lat], zoom: 15 });
       const a = await revGeocode(lat, lng);
       setPickup(lng, lat, a || `${lat}, ${lng}`);
     }, () => { 
@@ -688,7 +710,7 @@ export default function Booking() {
               </div>
 
               {/* Map Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
                 {/* Pickup Map */}
                 <div className="bg-black/30 p-4 rounded-xl border border-white/10 relative">
                   <label className="form-label mb-3 flex justify-between items-center">
@@ -696,16 +718,13 @@ export default function Booking() {
                   </label>
                   <div className="mb-3 relative">
                     <div className="flex gap-2">
-                      <input type="text" id="pickup" className="input-modern flex-grow" value={formData.pickup} onChange={handleChange} required placeholder="Search pickup..." />
+                      <input type="text" id="pickup" className="input-modern flex-grow" value={formData.pickup} onChange={handleChange} onKeyDown={(e) => handleKeyDown(e, 'pickup')} required placeholder="Search pickup (Press Enter)" />
                       <button type="button" onClick={handleCurrentLocation} className="bg-white/10 hover:bg-white/20 text-white px-4 rounded-lg transition-colors border border-white/10" title="Use Current Location">
                         <i className="fa-solid fa-location-crosshairs text-taxi-yellow"></i>
                       </button>
                     </div>
                   </div>
-                  <div className="relative">
-                    <div id="pickupMap" ref={pickupMapRef} className="w-full h-64 rounded-lg border border-white/20 mb-3 relative overflow-hidden" style={{ background: '#222' }}></div>
-                  </div>
-                  <p className="text-xs text-gray-400 text-center mt-2 italic">Click or drag pin on map to set pickup location</p>
+                  <p className="text-xs text-gray-400 text-center mt-2 italic">Press Enter to search, or click on the map below</p>
                 </div>
 
                 {/* Drop Map */}
@@ -715,14 +734,16 @@ export default function Booking() {
                   </label>
                   <div className="mb-3 relative">
                     <div className="flex gap-2">
-                      <input type="text" id="destination" className="input-modern flex-grow" value={formData.destination} onChange={handleChange} required placeholder="Search destination..." />
+                      <input type="text" id="destination" className="input-modern flex-grow" value={formData.destination} onChange={handleChange} onKeyDown={(e) => handleKeyDown(e, 'destination')} required placeholder="Search destination (Press Enter)" />
                     </div>
                   </div>
-                  <div className="relative">
-                    <div id="dropMap" ref={dropMapRef} className="w-full h-64 rounded-lg border border-white/20 mb-3 relative overflow-hidden" style={{ background: '#222' }}></div>
-                  </div>
-                  <p className="text-xs text-gray-400 text-center mt-2 italic">Click or drag pin on map to set destination</p>
+                  <p className="text-xs text-gray-400 text-center mt-2 italic">Press Enter to search, or click on the map below</p>
                 </div>
+              </div>
+
+              {/* Single Main Map */}
+              <div className="relative mt-2">
+                <div id="mainMap" ref={mapRef} className="w-full h-80 lg:h-96 rounded-xl border border-white/20 relative overflow-hidden shadow-2xl" style={{ background: '#222' }}></div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
