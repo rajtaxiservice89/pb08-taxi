@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mappls Search Test</title>
+    <script src="https://sdk.mappls.com/map/sdk/web?v=3.0&access_token=qrkpbdnlfswstxxqusrwdtdpbgcwmhnwzars"></script>
+    <script src="https://sdk.mappls.com/map/sdk/plugins?v=3.0&access_token=qrkpbdnlfswstxxqusrwdtdpbgcwmhnwzars"></script>
+</head>
+<body>
+    <input type="text" id="pickup" placeholder="Search Pickup" />
+    <script>
+        window.onload = () => {
+            setTimeout(() => {
+                if(window.mappls && window.mappls.search) {
+                    new window.mappls.search({ keyword: '', input: 'pickup' }, (data) => {
+                        console.log("Selected data:", data);
+                    });
+                } else {
+                    console.error("Mappls search plugin not loaded");
+                }
+            }, 1000);
+        };
+    </script>
+</body>
+</html>

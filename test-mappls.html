@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Mappls</title>
+  <script src="https://sdk.mappls.com/map/sdk/web?v=3.0&access_token=qrkpbdnlfswstxxqusrwdtdpbgcwmhnwzars"></script>
+  <script src="https://sdk.mappls.com/map/sdk/plugins?v=3.0&access_token=qrkpbdnlfswstxxqusrwdtdpbgcwmhnwzars"></script>
+  <style>
+    #map { width: 100%; height: 500px; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    window.onload = () => {
+      try {
+        console.log("Initializing map...");
+        const map = new window.mappls.Map('map', { center: [28.61, 77.23], zoom: 12 });
+        console.log("Map initialized successfully!", map);
+        
+        map.addListener('load', () => {
+           console.log("Map load event fired!");
+        });
+        
+        const marker = new window.mappls.Marker({ map: map, position: { lat: 28.61, lng: 77.23 }, draggable: true });
+        console.log("Marker added!", marker);
+        
+        // Wait 2 seconds then exit successfully
+        setTimeout(() => console.log("SUCCESS"), 2000);
+      } catch (err) {
+        console.error("ERROR:", err.message);
+      }
+    };
+  </script>
+</body>
+</html>

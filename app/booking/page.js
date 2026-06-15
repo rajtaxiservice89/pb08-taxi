@@ -325,6 +325,20 @@ export default function Booking() {
   const autocompleteSearch = async (q) => {
     try {
       if (locationApiConfig.provider === 'mappls') {
+           // We can proxy through our backend geocode endpoint to fetch autocomplete results
+           if (locationApiConfig.token) {
+               try {
+                   const res = await fetch(`/api/mappls/geocode?query=${encodeURIComponent(q)}&token=${locationApiConfig.token}`);
+                   const data = await res.json();
+                   if (data.suggestedLocations && data.suggestedLocations.length > 0) {
+                       return data.suggestedLocations.map(r => ({
+                           lat: parseFloat(r.latitude || r.lat || r.y || 0),
+                           lng: parseFloat(r.longitude || r.lng || r.x || 0),
+                           display: r.placeName + (r.placeAddress ? `, ${r.placeAddress}` : '')
+                       }));
+                   }
+               } catch (e) { console.error('Mappls proxy auto fail', e); }
+           }
            // Fallback to nominatim
            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=in`;
            const response = await fetch(url);
@@ -386,16 +400,16 @@ export default function Booking() {
     try {
       if (locationApiConfig.provider === 'mappls' && locationApiConfig.token) {
          try {
-           const url = `https://atlas.mappls.com/api/places/search/json?query=${encodeURIComponent(q)}&region=IND`;
-           const res = await fetch(url, { headers: { 'Authorization': `bearer ${locationApiConfig.token}` }});
+           const url = `/api/mappls/geocode?query=${encodeURIComponent(q)}&token=${locationApiConfig.token}`;
+           const res = await fetch(url);
            const data = await res.json();
            if (data.suggestedLocations && data.suggestedLocations.length > 0) {
               const r = data.suggestedLocations[0];
-              return { lat: parseFloat(r.latitude), lng: parseFloat(r.longitude), display: r.placeName + (r.placeAddress ? `, ${r.placeAddress}` : '') };
+              return { lat: parseFloat(r.latitude || r.lat || r.y || 0), lng: parseFloat(r.longitude || r.lng || r.x || 0), display: r.placeName + (r.placeAddress ? `, ${r.placeAddress}` : '') };
            }
          } catch(e) { console.error("Mappls Geocode Error:", e); }
-         // Fallback to Nominatim
-         const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`;
+         // Fallback to Nominatim strictly constrained to India
+         const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=in`;
          const res = await fetch(url);
          const data = await res.json();
          if (data && data.length > 0) {
