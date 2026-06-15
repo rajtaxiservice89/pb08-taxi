@@ -597,41 +597,59 @@ export default function Booking() {
        // Attach Mappls Search Plugin to the input fields if available
        if (window.mappls.search) {
           setTimeout(() => {
+            const processLocationData = async (type, r) => {
+                if (!r) return;
+                let lat = parseFloat(r.latitude || r.lat || r.y || r.latPos || 0);
+                let lng = parseFloat(r.longitude || r.lng || r.lon || r.x || r.lonPos || 0);
+                const name = r.placeName || r.placeAddress || r.eLoc || r.name || '';
+                const eLoc = r.eLoc || r.mapplsPin || r.poiId;
+
+                // If coordinates are missing but we have eLoc, we can try to get them via mappls API or Nominatim
+                // But usually, Mappls autosuggest returns them.
+                if ((!lat || !lng) && eLoc && window.mappls.getPinDetails) {
+                    try {
+                        await new Promise(resolve => {
+                            window.mappls.getPinDetails({pin: eLoc}, (data) => {
+                                if (data && data.data && data.data.length > 0) {
+                                    lat = parseFloat(data.data[0].latitude || lat);
+                                    lng = parseFloat(data.data[0].longitude || lng);
+                                }
+                                resolve();
+                            });
+                        });
+                    } catch(e) { console.error(e); }
+                }
+
+                if (lat && lng) {
+                    if (type === 'pickup') {
+                        setPickup(lng, lat, name);
+                    } else {
+                        setDest(lng, lat, name);
+                    }
+                    if(mapInstance.current) {
+                        mapInstance.current.setCenter({lat, lng});
+                        mapInstance.current.setZoom(14);
+                    }
+                } else {
+                    // Fallback to our backend geocode if Mappls fails to provide coordinates
+                    const fallbackData = await geocode(name);
+                    if (fallbackData) {
+                        if (type === 'pickup') setPickup(fallbackData.lng, fallbackData.lat, name);
+                        else setDest(fallbackData.lng, fallbackData.lat, name);
+                        if(mapInstance.current) mapInstance.current.setCenter({lat: fallbackData.lat, lng: fallbackData.lng});
+                    }
+                }
+            };
+
             const handlePluginData = (type, data) => {
                if(data) {
-                  // DEBUG ALERT TO SEE MAPPLS DATA STRUCTURE
-                  alert("DEBUG_MAPPLS_DATA: " + JSON.stringify(data));
-                  
                   let r = null;
                   if (Array.isArray(data)) r = data[0];
                   else if (data.data && Array.isArray(data.data)) r = data.data[0];
                   else if (data.suggestedLocations && Array.isArray(data.suggestedLocations)) r = data.suggestedLocations[0];
                   else r = data;
 
-                  if (!r) return;
-                  
-                  const lat = parseFloat(r.latitude || r.lat || r.y || r.latPos || 0);
-                  const lng = parseFloat(r.longitude || r.lng || r.lon || r.x || r.lonPos || 0);
-                  const name = r.placeName || r.placeAddress || r.eLoc || r.name || '';
-                  
-                  if (lat && lng) {
-                      if (type === 'pickup') {
-                         setPickup(lng, lat, name);
-                      } else {
-                         setDest(lng, lat, name);
-                      }
-                      if(mapInstance.current) {
-                          mapInstance.current.setCenter({lat, lng});
-                          mapInstance.current.setZoom(14);
-                      }
-                  } else {
-                      // Fallback if no coordinates provided by autosuggest
-                      const el = document.getElementById(type);
-                      if (el) {
-                          el.value = name;
-                          handleKeyDown({ key: 'Enter', preventDefault: () => {} }, type);
-                      }
-                  }
+                  processLocationData(type, r);
                }
             };
 
