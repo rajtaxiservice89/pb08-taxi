@@ -98,7 +98,8 @@ export default function Booking() {
           pluginScript.src = `https://sdk.mappls.com/map/sdk/plugins?v=3.0&access_token=${locationApiConfig.apiKey}`;
           document.head.appendChild(pluginScript);
           pluginScript.onload = () => {
-             initMappls();
+             window.isMapplsLoaded = true;
+             initMaps();
           };
         };
         return;
@@ -126,7 +127,8 @@ export default function Booking() {
     };
 
     if (locationApiConfig.provider === 'mappls') {
-       loadMappls();
+       if (window.isMapplsLoaded) initMaps();
+       else loadMappls();
     } else {
        loadMapLibre();
     }
