@@ -86,20 +86,23 @@ export default function Booking() {
     if (!configLoaded) return; // Wait for API config
 
     const loadMappls = () => {
-      const script = document.createElement('script');
-      script.src = `https://apis.mappls.com/advancedmaps/api/${locationApiConfig.token || locationApiConfig.apiKey}/map_sdk?layer=vector&v=3.0`;
-      script.async = true;
-      script.onload = () => {
-         const pluginScript = document.createElement('script');
-         pluginScript.src = `https://apis.mappls.com/advancedmaps/api/${locationApiConfig.token || locationApiConfig.apiKey}/map_sdk_plugins?v=3.0&libraries=search`;
-         pluginScript.async = true;
-         pluginScript.onload = () => {
-            window.isMapplsLoaded = true;
-            initMaps();
-         };
-         document.body.appendChild(pluginScript);
-      };
-      document.body.appendChild(script);
+      if (locationApiConfig.provider === 'mappls') {
+        const script = document.createElement('script');
+        script.src = `https://sdk.mappls.com/map/sdk/web?v=3.0&access_token=${locationApiConfig.apiKey}`;
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+
+        script.onload = () => {
+          const pluginScript = document.createElement('script');
+          pluginScript.src = `https://sdk.mappls.com/map/sdk/plugins?v=3.0&access_token=${locationApiConfig.apiKey}`;
+          document.head.appendChild(pluginScript);
+          pluginScript.onload = () => {
+             initMappls();
+          };
+        };
+        return;
+      }
     };
 
     const loadMapLibre = () => {
@@ -123,8 +126,7 @@ export default function Booking() {
     };
 
     if (locationApiConfig.provider === 'mappls') {
-       if (window.isMapplsLoaded) initMaps();
-       else loadMappls();
+       loadMappls();
     } else {
        loadMapLibre();
     }
@@ -169,8 +171,9 @@ export default function Booking() {
       let url = `https://router.project-osrm.org/route/v1/driving/${formData.pickupLng},${formData.pickupLat};${formData.destLng},${formData.destLat}?overview=full&geometries=geojson`;
       let headers = {};
       
-      if (locationApiConfig.provider === 'mappls' && locationApiConfig.token) {
-         url = `https://apis.mappls.com/advancedmaps/v1/${locationApiConfig.token}/route_adv/driving/${formData.pickupLng},${formData.pickupLat};${formData.destLng},${formData.destLat}?geometries=geojson`;
+      if (locationApiConfig.provider === 'mappls') {
+         // Fallback to nominatim for routing since Mappls REST API requires OAuth token
+         url = `https://router.project-osrm.org/route/v1/driving/${formData.pickupLng},${formData.pickupLat};${formData.destLng},${formData.destLat}?overview=full&geometries=geojson`;
       }
       
       const res = await fetch(url, { headers });
@@ -276,20 +279,12 @@ export default function Booking() {
 
   const revGeocode = async (lat, lng) => {
     try{
-      if (locationApiConfig.provider === 'mappls' && locationApiConfig.token) {
-         try {
-           const url = `https://apis.mappls.com/advancedmaps/v1/${locationApiConfig.token}/rev_geocode?lat=${lat}&lng=${lng}`;
-           const res = await fetch(url);
-           const data = await res.json();
-           if (data.results && data.results.length > 0) {
-              return data.results[0].formatted_address;
-           }
-         } catch(e) { console.error("Mappls RevGeocode Error:", e); }
-         // Fallback to Nominatim
-         const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
-         const res = await fetch(url);
-         const data = await res.json();
-         return data.display_name || `${lat}, ${lng}`;
+      if (locationApiConfig.provider === 'mappls') {
+           // Fallback to nominatim for reverse geocode since Mappls REST requires OAuth
+           const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
+           const response = await fetch(url);
+           const data = await response.json();
+           return data && data.display_name ? data.display_name : "Location found";
       }
 
       let keys = [locationApiConfig.apiKey];
@@ -322,21 +317,18 @@ export default function Booking() {
 
   const autocompleteSearch = async (q) => {
     try {
-      if (locationApiConfig.provider === 'mappls' && locationApiConfig.token) {
-         try {
-           const url = `https://atlas.mappls.com/api/places/search/json?query=${encodeURIComponent(q)}&region=IND`;
-           const res = await fetch(url, { headers: { 'Authorization': `bearer ${locationApiConfig.token}` }});
+      if (locationApiConfig.provider === 'mappls') {
+           // Fallback to nominatim
+           const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`;
+           const res = await fetch(url);
            const data = await res.json();
-           if (data.suggestedLocations) {
-              return data.suggestedLocations.map(r => ({
-                 lat: parseFloat(r.latitude),
-                 lng: parseFloat(r.longitude),
-                 display: r.placeName + (r.placeAddress ? `, ${r.placeAddress}` : '')
+           if(data && data.length > 0) {
+              return data.map(item => ({
+                 display: item.display_name,
+                 lat: parseFloat(item.lat),
+                 lng: parseFloat(item.lon)
               }));
            }
-         } catch(e) { console.error("Mappls Autocomplete Error:", e); }
-         // If Mappls fails or returns empty, fallback to Nominatim
-         const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`;
          const res = await fetch(url);
          const data = await res.json();
          if (data && data.length > 0) {

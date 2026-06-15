@@ -249,12 +249,7 @@ export default function AdminDashboard() {
 
   const handleAddLocationApi = async () => {
     let payload = { ...newApi };
-    if(payload.provider === 'mappls') {
-       if(!mapplsKeys.clientId || !mapplsKeys.clientSecret) return alert("Client ID and Client Secret are required for Mappls");
-       payload.apiKey = JSON.stringify(mapplsKeys);
-    } else {
-       if(!payload.apiKey && payload.provider !== 'nominatim') return alert("API Key is required");
-    }
+    if(!payload.apiKey && payload.provider !== 'nominatim') return alert("API Key is required");
 
     try {
       const res = await fetch('/api/admin/settings/location-apis', {
@@ -301,20 +296,7 @@ export default function AdminDashboard() {
         url = `https://api.geoapify.com/v1/geocode/search?text=delhi&apiKey=${api.apiKey}&format=json&limit=1`;
         res = await fetch(url);
       } else if (api.provider === 'mappls') {
-        // Parse credentials
-        const creds = JSON.parse(api.apiKey);
-        const tokenRes = await fetch('/api/mappls/token?test=true', {
-           method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify(creds)
-        });
-        if (!tokenRes.ok) {
-           alert("API Expire");
-           setTestingApi(null);
-           return;
-        }
-        const tokenData = await tokenRes.json();
-        url = `https://apis.mappls.com/advancedmaps/api/${tokenData.access_token}/map_sdk?layer=vector&v=3.0`;
+        url = `https://apis.mappls.com/advancedmaps/api/${api.apiKey}/map_sdk?layer=vector&v=3.0`;
         res = await fetch(url);
       } else if (api.provider === 'nominatim') {
         url = `https://nominatim.openstreetmap.org/search?q=delhi&format=json&limit=1`;
@@ -1196,33 +1178,14 @@ export default function AdminDashboard() {
                         <option value="nominatim">Nominatim (Free, No Key required)</option>
                       </select>
                       
-                      {newApi.provider === 'mappls' ? (
-                        <div className="flex gap-2 w-full md:w-auto flex-1">
-                          <input 
-                            type="text" 
-                            placeholder="Mappls Client ID" 
-                            className="input-modern bg-black/30 w-full"
-                            value={mapplsKeys.clientId}
-                            onChange={(e) => setMapplsKeys({...mapplsKeys, clientId: e.target.value})}
-                          />
-                          <input 
-                            type="password" 
-                            placeholder="Mappls Client Secret" 
-                            className="input-modern bg-black/30 w-full"
-                            value={mapplsKeys.clientSecret}
-                            onChange={(e) => setMapplsKeys({...mapplsKeys, clientSecret: e.target.value})}
-                          />
-                        </div>
-                      ) : (
-                        <input 
-                          type="text" 
-                          placeholder={newApi.provider === 'nominatim' ? "API Key not needed" : "Enter API Key"} 
-                          className="input-modern bg-black/30 w-full md:flex-1"
-                          value={newApi.apiKey}
-                          disabled={newApi.provider === 'nominatim'}
-                          onChange={(e) => setNewApi({...newApi, apiKey: e.target.value})}
-                        />
-                      )}
+                      <input 
+                        type="text" 
+                        placeholder={newApi.provider === 'nominatim' ? "API Key not needed" : "Enter API Key (Static Key)"} 
+                        className="input-modern bg-black/30 w-full md:flex-1"
+                        value={newApi.apiKey}
+                        disabled={newApi.provider === 'nominatim'}
+                        onChange={(e) => setNewApi({...newApi, apiKey: e.target.value})}
+                      />
                       
                       <button onClick={handleAddLocationApi} className="btn-primary w-full md:w-auto mt-2 md:mt-0">
                         <i className="fa-solid fa-plus mr-2"></i> Add API
