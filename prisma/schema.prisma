@@ -75,6 +75,10 @@ model DriverProfile {
   createdBy             String   @default("driver") // "admin" or "driver"
   status                String   @default("PENDING") // PENDING, APPROVED, REJECTED
   waApprovalStatus      String   @default("none") // none, pending, success, error
+  isOnline              Boolean  @default(false)
+  currentLat            Float?
+  currentLng            Float?
+  lastLocationUpdate    DateTime?
   bookings              Booking[]
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
