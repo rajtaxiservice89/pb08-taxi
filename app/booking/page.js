@@ -35,6 +35,12 @@ export default function Booking() {
   const handleKeyDown = async (e, type) => {
     if (e.key === 'Enter') {
       e.preventDefault();
+
+      if (locationApiConfig.provider === 'mappls') {
+          // Let the Mappls plugin handle the Enter key natively.
+          return;
+      }
+
       const el = document.getElementById(type);
       const query = el ? el.value : '';
       if (!query.trim()) return;
