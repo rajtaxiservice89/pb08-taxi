@@ -15,10 +15,6 @@ export default function Booking() {
   const [locationApiConfig, setLocationApiConfig] = useState({ provider: 'nominatim', apiKey: '' });
   const [configLoaded, setConfigLoaded] = useState(false);
   
-  const [pickupSuggestions, setPickupSuggestions] = useState([]);
-  const [dropSuggestions, setDropSuggestions] = useState([]);
-  const pickupTimeoutRef = useRef(null);
-  const dropTimeoutRef = useRef(null);
   
   const pickupMapRef = useRef(null);
   const dropMapRef = useRef(null);
@@ -34,30 +30,6 @@ export default function Booking() {
   const handleChange = (e) => {
     const { id, value } = e.target;
     setFormData(prev => ({ ...prev, [id]: value }));
-
-    if (id === 'pickup') {
-      if (locationApiConfig.provider === 'mappls') return; // Use native Mappls search
-      if (pickupTimeoutRef.current) clearTimeout(pickupTimeoutRef.current);
-      if (value.trim().length > 2) {
-        pickupTimeoutRef.current = setTimeout(async () => {
-          const results = await autocompleteSearch(value);
-          setPickupSuggestions(results);
-        }, 500);
-      } else {
-        setPickupSuggestions([]);
-      }
-    } else if (id === 'destination') {
-      if (locationApiConfig.provider === 'mappls') return; // Use native Mappls search
-      if (dropTimeoutRef.current) clearTimeout(dropTimeoutRef.current);
-      if (value.trim().length > 2) {
-        dropTimeoutRef.current = setTimeout(async () => {
-          const results = await autocompleteSearch(value);
-          setDropSuggestions(results);
-        }, 500);
-      } else {
-        setDropSuggestions([]);
-      }
-    }
   };
 
   useEffect(() => {
@@ -622,27 +594,7 @@ export default function Booking() {
     }
   };
 
-  const handlePickupSearch = async () => {
-    if(!formData.pickup.trim()) return;
-    const r = await geocode(formData.pickup);
-    if(r) { 
-      setPickup(r.lng, r.lat, r.display); 
-      if(pMapInstance.current) pMapInstance.current.flyTo({ center: [r.lng, r.lat], zoom: 14 }); 
-    } else {
-      alert("Location not found. Please try zooming in and clicking on the map manually.");
-    }
-  };
 
-  const handleDestSearch = async () => {
-    if(!formData.destination.trim()) return;
-    const r = await geocode(formData.destination);
-    if(r) { 
-      setDest(r.lng, r.lat, r.display); 
-      if(dMapInstance.current) dMapInstance.current.flyTo({ center: [r.lng, r.lat], zoom: 14 }); 
-    } else {
-      alert("Location not found. Please try zooming in and clicking on the map manually.");
-    }
-  };
 
   const handleCurrentLocation = () => {
     if(!navigator.geolocation) { alert('Geolocation not supported'); return; }
@@ -744,28 +696,11 @@ export default function Booking() {
                   </label>
                   <div className="mb-3 relative">
                     <div className="flex gap-2">
-                      <input type="text" id="pickup" className="input-modern flex-grow" value={formData.pickup} onChange={handleChange} onFocus={() => {if (pickupSuggestions.length > 0) setPickupSuggestions([...pickupSuggestions]);}} required placeholder="Search pickup..." />
+                      <input type="text" id="pickup" className="input-modern flex-grow" value={formData.pickup} onChange={handleChange} required placeholder="Search pickup..." />
                       <button type="button" onClick={handleCurrentLocation} className="bg-white/10 hover:bg-white/20 text-white px-4 rounded-lg transition-colors border border-white/10" title="Use Current Location">
                         <i className="fa-solid fa-location-crosshairs text-taxi-yellow"></i>
                       </button>
-                      <button type="button" onClick={handlePickupSearch} className="bg-taxi-yellow text-black px-4 rounded-lg hover:bg-yellow-400 transition-colors" title="Search on Map">
-                        <i className="fa-solid fa-search"></i>
-                      </button>
                     </div>
-                    {pickupSuggestions.length > 0 && (
-                      <div className="absolute z-50 w-full bg-black/95 border border-white/20 rounded-lg mt-1 max-h-60 overflow-y-auto shadow-2xl top-full">
-                        {pickupSuggestions.map((s, i) => (
-                          <div key={i} onClick={() => {
-                            setPickup(s.lng, s.lat, s.display);
-                            if(pMapInstance.current) pMapInstance.current.flyTo({ center: [s.lng, s.lat], zoom: 15 });
-                            setPickupSuggestions([]);
-                          }} className="p-3 border-b border-white/10 hover:bg-white/10 cursor-pointer text-sm text-gray-200 flex items-start gap-3 transition-colors">
-                            <i className="fa-solid fa-location-dot mt-1 text-taxi-yellow"></i> 
-                            <span>{s.display}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
                   <div className="relative">
                     <div id="pickupMap" ref={pickupMapRef} className="w-full h-64 rounded-lg border border-white/20 mb-3 relative overflow-hidden" style={{ background: '#222' }}></div>
@@ -780,25 +715,8 @@ export default function Booking() {
                   </label>
                   <div className="mb-3 relative">
                     <div className="flex gap-2">
-                      <input type="text" id="destination" className="input-modern flex-grow" value={formData.destination} onChange={handleChange} onFocus={() => {if (dropSuggestions.length > 0) setDropSuggestions([...dropSuggestions]);}} required placeholder="Search destination..." />
-                      <button type="button" onClick={handleDestSearch} className="bg-taxi-yellow text-black px-4 rounded-lg hover:bg-yellow-400 transition-colors" title="Search on Map">
-                        <i className="fa-solid fa-search"></i>
-                      </button>
+                      <input type="text" id="destination" className="input-modern flex-grow" value={formData.destination} onChange={handleChange} required placeholder="Search destination..." />
                     </div>
-                    {dropSuggestions.length > 0 && (
-                      <div className="absolute z-50 w-full bg-black/95 border border-white/20 rounded-lg mt-1 max-h-60 overflow-y-auto shadow-2xl top-full">
-                        {dropSuggestions.map((s, i) => (
-                          <div key={i} onClick={() => {
-                            setDest(s.lng, s.lat, s.display);
-                            if(dMapInstance.current) dMapInstance.current.flyTo({ center: [s.lng, s.lat], zoom: 15 });
-                            setDropSuggestions([]);
-                          }} className="p-3 border-b border-white/10 hover:bg-white/10 cursor-pointer text-sm text-gray-200 flex items-start gap-3 transition-colors">
-                            <i className="fa-solid fa-location-dot mt-1 text-red-500"></i> 
-                            <span>{s.display}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
                   <div className="relative">
                     <div id="dropMap" ref={dropMapRef} className="w-full h-64 rounded-lg border border-white/20 mb-3 relative overflow-hidden" style={{ background: '#222' }}></div>
