@@ -251,6 +251,22 @@ export default function Booking() {
 
   const revGeocode = async (lat, lng) => {
     try{
+      if (locationApiConfig.provider === 'mappls' && locationApiConfig.token) {
+         try {
+           const url = `https://apis.mappls.com/advancedmaps/v1/${locationApiConfig.token}/rev_geocode?lat=${lat}&lng=${lng}`;
+           const res = await fetch(url);
+           const data = await res.json();
+           if (data.results && data.results.length > 0) {
+              return data.results[0].formatted_address;
+           }
+         } catch(e) { console.error("Mappls RevGeocode Error:", e); }
+         // Fallback to Nominatim
+         const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
+         const res = await fetch(url);
+         const data = await res.json();
+         return data.display_name || `${lat}, ${lng}`;
+      }
+
       let keys = [locationApiConfig.apiKey];
       if (locationApiConfig.apiKey && locationApiConfig.apiKey.includes(',')) {
          keys = locationApiConfig.apiKey.split(',').map(k => k.trim());
@@ -282,15 +298,24 @@ export default function Booking() {
   const autocompleteSearch = async (q) => {
     try {
       if (locationApiConfig.provider === 'mappls' && locationApiConfig.token) {
-         const url = `https://atlas.mappls.com/api/places/search/json?query=${encodeURIComponent(q)}&region=IND`;
-         const res = await fetch(url, { headers: { 'Authorization': `bearer ${locationApiConfig.token}` }});
+         try {
+           const url = `https://atlas.mappls.com/api/places/search/json?query=${encodeURIComponent(q)}&region=IND`;
+           const res = await fetch(url, { headers: { 'Authorization': `bearer ${locationApiConfig.token}` }});
+           const data = await res.json();
+           if (data.suggestedLocations) {
+              return data.suggestedLocations.map(r => ({
+                 lat: parseFloat(r.latitude),
+                 lng: parseFloat(r.longitude),
+                 display: r.placeName + (r.placeAddress ? `, ${r.placeAddress}` : '')
+              }));
+           }
+         } catch(e) { console.error("Mappls Autocomplete Error:", e); }
+         // If Mappls fails or returns empty, fallback to Nominatim
+         const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`;
+         const res = await fetch(url);
          const data = await res.json();
-         if (data.suggestedLocations) {
-            return data.suggestedLocations.map(r => ({
-               lat: parseFloat(r.latitude),
-               lng: parseFloat(r.longitude),
-               display: r.placeName + (r.placeAddress ? `, ${r.placeAddress}` : '')
-            }));
+         if (data && data.length > 0) {
+            return data.map(r => ({ lat: parseFloat(r.lat), lng: parseFloat(r.lon), display: r.display_name }));
          }
          return [];
       }
@@ -341,12 +366,21 @@ export default function Booking() {
   const geocode = async (q) => {
     try {
       if (locationApiConfig.provider === 'mappls' && locationApiConfig.token) {
-         const url = `https://atlas.mappls.com/api/places/search/json?query=${encodeURIComponent(q)}&region=IND`;
-         const res = await fetch(url, { headers: { 'Authorization': `bearer ${locationApiConfig.token}` }});
+         try {
+           const url = `https://atlas.mappls.com/api/places/search/json?query=${encodeURIComponent(q)}&region=IND`;
+           const res = await fetch(url, { headers: { 'Authorization': `bearer ${locationApiConfig.token}` }});
+           const data = await res.json();
+           if (data.suggestedLocations && data.suggestedLocations.length > 0) {
+              const r = data.suggestedLocations[0];
+              return { lat: parseFloat(r.latitude), lng: parseFloat(r.longitude), display: r.placeName + (r.placeAddress ? `, ${r.placeAddress}` : '') };
+           }
+         } catch(e) { console.error("Mappls Geocode Error:", e); }
+         // Fallback to Nominatim
+         const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`;
+         const res = await fetch(url);
          const data = await res.json();
-         if (data.suggestedLocations && data.suggestedLocations.length > 0) {
-            const r = data.suggestedLocations[0];
-            return { lat: parseFloat(r.latitude), lng: parseFloat(r.longitude), display: r.placeName + (r.placeAddress ? `, ${r.placeAddress}` : '') };
+         if (data && data.length > 0) {
+            return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name };
          }
          return null;
       }
