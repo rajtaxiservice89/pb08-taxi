@@ -35,8 +35,17 @@ export default function Booking() {
   const handleKeyDown = async (e, type) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      const query = type === 'pickup' ? formData.pickup : formData.destination;
+      const el = document.getElementById(type);
+      const query = el ? el.value : '';
       if (!query.trim()) return;
+      
+      // Update form data so we have the latest text even if geocode fails
+      if (type === 'pickup') {
+          setFormData(prev => ({ ...prev, pickup: query }));
+      } else {
+          setFormData(prev => ({ ...prev, destination: query }));
+      }
+
       const r = await geocode(query);
       if (r) {
         if (type === 'pickup') {
@@ -443,7 +452,11 @@ export default function Booking() {
   };
 
   const setPickup = async (lng, lat, addr) => {
-    setFormData(prev => ({ ...prev, pickupLat: lat, pickupLng: lng, pickup: addr || prev.pickup }));
+    const finalAddr = addr || formData.pickup;
+    setFormData(prev => ({ ...prev, pickupLat: lat, pickupLng: lng, pickup: finalAddr }));
+    const pEl = document.getElementById('pickup');
+    if (pEl && finalAddr && finalAddr !== 'Fetching current location...') pEl.value = finalAddr;
+
     if(pickupMarkerRef.current) {
         try { pickupMarkerRef.current.remove(); } catch(e) {}
         try { pickupMarkerRef.current.setMap(null); } catch(e) {}
@@ -453,11 +466,17 @@ export default function Booking() {
        const attachDrag = (m) => m.addListener ? m.addListener('dragend', async () => {
           const ll = pickupMarkerRef.current.getPosition();
           const a = await revGeocode(ll.lat, ll.lng);
-          setFormData(prev => ({ ...prev, pickupLat: ll.lat, pickupLng: ll.lng, pickup: a || prev.pickup }));
+          const newAddr = a || formData.pickup;
+          setFormData(prev => ({ ...prev, pickupLat: ll.lat, pickupLng: ll.lng, pickup: newAddr }));
+          const pEl = document.getElementById('pickup');
+          if (pEl && a) pEl.value = a;
        }) : m.on('dragend', async () => {
           const ll = pickupMarkerRef.current.getPosition ? pickupMarkerRef.current.getPosition() : pickupMarkerRef.current.getLngLat();
           const a = await revGeocode(ll.lat || ll.lat, ll.lng || ll.lng);
-          setFormData(prev => ({ ...prev, pickupLat: ll.lat, pickupLng: ll.lng, pickup: a || prev.pickup }));
+          const newAddr = a || formData.pickup;
+          setFormData(prev => ({ ...prev, pickupLat: ll.lat, pickupLng: ll.lng, pickup: newAddr }));
+          const pEl = document.getElementById('pickup');
+          if (pEl && a) pEl.value = a;
        });
        attachDrag(pickupMarkerRef.current);
     } else {
@@ -467,13 +486,20 @@ export default function Booking() {
        pickupMarkerRef.current.on('dragend', async () => {
          const ll = pickupMarkerRef.current.getLngLat();
          const a = await revGeocode(ll.lat, ll.lng);
-         setFormData(prev => ({ ...prev, pickupLat: ll.lat, pickupLng: ll.lng, pickup: a || prev.pickup }));
+         const newAddr = a || formData.pickup;
+         setFormData(prev => ({ ...prev, pickupLat: ll.lat, pickupLng: ll.lng, pickup: newAddr }));
+         const pEl = document.getElementById('pickup');
+         if (pEl && a) pEl.value = a;
        });
     }
   };
 
   const setDest = async (lng, lat, addr) => {
-    setFormData(prev => ({ ...prev, destLat: lat, destLng: lng, destination: addr || prev.destination }));
+    const finalAddr = addr || formData.destination;
+    setFormData(prev => ({ ...prev, destLat: lat, destLng: lng, destination: finalAddr }));
+    const dEl = document.getElementById('destination');
+    if (dEl && finalAddr) dEl.value = finalAddr;
+
     if(destMarkerRef.current) {
         try { destMarkerRef.current.remove(); } catch(e) {}
         try { destMarkerRef.current.setMap(null); } catch(e) {}
@@ -483,11 +509,17 @@ export default function Booking() {
        const attachDrag = (m) => m.addListener ? m.addListener('dragend', async () => {
           const ll = destMarkerRef.current.getPosition();
           const a = await revGeocode(ll.lat, ll.lng);
-          setFormData(prev => ({ ...prev, destLat: ll.lat, destLng: ll.lng, destination: a || prev.destination }));
+          const newAddr = a || formData.destination;
+          setFormData(prev => ({ ...prev, destLat: ll.lat, destLng: ll.lng, destination: newAddr }));
+          const dEl = document.getElementById('destination');
+          if (dEl && a) dEl.value = a;
        }) : m.on('dragend', async () => {
           const ll = destMarkerRef.current.getPosition ? destMarkerRef.current.getPosition() : destMarkerRef.current.getLngLat();
           const a = await revGeocode(ll.lat || ll.lat, ll.lng || ll.lng);
-          setFormData(prev => ({ ...prev, destLat: ll.lat, destLng: ll.lng, destination: a || prev.destination }));
+          const newAddr = a || formData.destination;
+          setFormData(prev => ({ ...prev, destLat: ll.lat, destLng: ll.lng, destination: newAddr }));
+          const dEl = document.getElementById('destination');
+          if (dEl && a) dEl.value = a;
        });
        attachDrag(destMarkerRef.current);
     } else {
@@ -497,7 +529,10 @@ export default function Booking() {
        destMarkerRef.current.on('dragend', async () => {
          const ll = destMarkerRef.current.getLngLat();
          const a = await revGeocode(ll.lat, ll.lng);
-         setFormData(prev => ({ ...prev, destLat: ll.lat, destLng: ll.lng, destination: a || prev.destination }));
+         const newAddr = a || formData.destination;
+         setFormData(prev => ({ ...prev, destLat: ll.lat, destLng: ll.lng, destination: newAddr }));
+         const dEl = document.getElementById('destination');
+         if (dEl && a) dEl.value = a;
        });
     }
   };
@@ -562,20 +597,26 @@ export default function Booking() {
        // Attach Mappls Search Plugin to the input fields if available
        if (window.mappls.search) {
           setTimeout(() => {
-            new window.mappls.search({ keyword: '', input: 'pickup' }, (data) => {
-               if(data && data.length > 0) {
-                  const r = data[0];
-                  setPickup(r.longitude, r.latitude, r.placeName);
-                  if(mapInstance.current) mapInstance.current.setCenter({lat: r.latitude, lng: r.longitude});
-               }
-            });
-            new window.mappls.search({ keyword: '', input: 'destination' }, (data) => {
-               if(data && data.length > 0) {
-                  const r = data[0];
-                  setDest(r.longitude, r.latitude, r.placeName);
-                  if(mapInstance.current) mapInstance.current.setCenter({lat: r.latitude, lng: r.longitude});
-               }
-            });
+            const pInput = document.getElementById('pickup');
+            if (pInput) {
+                new window.mappls.search(pInput, { keyword: '' }, (data) => {
+                   if(data && data.length > 0) {
+                      const r = data[0];
+                      setPickup(r.longitude, r.latitude, r.placeName);
+                      if(mapInstance.current) mapInstance.current.setCenter({lat: r.latitude, lng: r.longitude});
+                   }
+                });
+            }
+            const dInput = document.getElementById('destination');
+            if (dInput) {
+                new window.mappls.search(dInput, { keyword: '' }, (data) => {
+                   if(data && data.length > 0) {
+                      const r = data[0];
+                      setDest(r.longitude, r.latitude, r.placeName);
+                      if(mapInstance.current) mapInstance.current.setCenter({lat: r.latitude, lng: r.longitude});
+                   }
+                });
+            }
           }, 1000);
        }
        
@@ -693,7 +734,7 @@ export default function Booking() {
               </div>
 
               {/* Map Section */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 relative z-50">
                 {/* Pickup Map */}
                 <div className="bg-black/30 p-4 rounded-xl border border-white/10 relative">
                   <label className="form-label mb-3 flex justify-between items-center">
@@ -701,7 +742,7 @@ export default function Booking() {
                   </label>
                   <div className="mb-3 relative">
                     <div className="flex gap-2">
-                      <input type="text" id="pickup" className="input-modern flex-grow" value={formData.pickup} onChange={handleChange} onKeyDown={(e) => handleKeyDown(e, 'pickup')} required placeholder="Search pickup (Press Enter)" />
+                      <input type="text" id="pickup" className="input-modern flex-grow" defaultValue={formData.pickup} onBlur={(e) => setFormData(prev => ({...prev, pickup: e.target.value}))} onKeyDown={(e) => handleKeyDown(e, 'pickup')} required placeholder="Search pickup (Press Enter)" />
                       <button type="button" onClick={handleCurrentLocation} className="bg-white/10 hover:bg-white/20 text-white px-4 rounded-lg transition-colors border border-white/10" title="Use Current Location">
                         <i className="fa-solid fa-location-crosshairs text-taxi-yellow"></i>
                       </button>
@@ -717,7 +758,7 @@ export default function Booking() {
                   </label>
                   <div className="mb-3 relative">
                     <div className="flex gap-2">
-                      <input type="text" id="destination" className="input-modern flex-grow" value={formData.destination} onChange={handleChange} onKeyDown={(e) => handleKeyDown(e, 'destination')} required placeholder="Search destination (Press Enter)" />
+                      <input type="text" id="destination" className="input-modern flex-grow" defaultValue={formData.destination} onBlur={(e) => setFormData(prev => ({...prev, destination: e.target.value}))} onKeyDown={(e) => handleKeyDown(e, 'destination')} required placeholder="Search destination (Press Enter)" />
                     </div>
                   </div>
                   <p className="text-xs text-gray-400 text-center mt-2 italic">Press Enter to search, or click on the map below</p>
