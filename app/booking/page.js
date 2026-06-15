@@ -597,25 +597,42 @@ export default function Booking() {
        // Attach Mappls Search Plugin to the input fields if available
        if (window.mappls.search) {
           setTimeout(() => {
+            const handlePluginData = (type, data) => {
+               if(data) {
+                  const r = Array.isArray(data) ? data[0] : data;
+                  if (!r) return;
+                  const lat = r.latitude || r.lat || r.y;
+                  const lng = r.longitude || r.lng || r.lon || r.x;
+                  const name = r.placeName || r.placeAddress || r.eLoc || '';
+                  
+                  if (lat && lng) {
+                      if (type === 'pickup') {
+                         setPickup(lng, lat, name);
+                      } else {
+                         setDest(lng, lat, name);
+                      }
+                      if(mapInstance.current) {
+                          mapInstance.current.setCenter({lat, lng});
+                          mapInstance.current.setZoom(14);
+                      }
+                  } else {
+                      // Fallback if no coordinates provided by autosuggest
+                      const el = document.getElementById(type);
+                      if (el) {
+                          el.value = name;
+                          handleKeyDown({ key: 'Enter', preventDefault: () => {} }, type);
+                      }
+                  }
+               }
+            };
+
             const pInput = document.getElementById('pickup');
             if (pInput) {
-                new window.mappls.search(pInput, { keyword: '' }, (data) => {
-                   if(data && data.length > 0) {
-                      const r = data[0];
-                      setPickup(r.longitude, r.latitude, r.placeName);
-                      if(mapInstance.current) mapInstance.current.setCenter({lat: r.latitude, lng: r.longitude});
-                   }
-                });
+                new window.mappls.search(pInput, { keyword: '' }, (data) => handlePluginData('pickup', data));
             }
             const dInput = document.getElementById('destination');
             if (dInput) {
-                new window.mappls.search(dInput, { keyword: '' }, (data) => {
-                   if(data && data.length > 0) {
-                      const r = data[0];
-                      setDest(r.longitude, r.latitude, r.placeName);
-                      if(mapInstance.current) mapInstance.current.setCenter({lat: r.latitude, lng: r.longitude});
-                   }
-                });
+                new window.mappls.search(dInput, { keyword: '' }, (data) => handlePluginData('destination', data));
             }
           }, 1000);
        }
@@ -743,6 +760,9 @@ export default function Booking() {
                   <div className="mb-3 relative">
                     <div className="flex gap-2">
                       <input type="text" id="pickup" className="input-modern flex-grow" defaultValue={formData.pickup} onBlur={(e) => setFormData(prev => ({...prev, pickup: e.target.value}))} onKeyDown={(e) => handleKeyDown(e, 'pickup')} required placeholder="Search pickup (Press Enter)" />
+                      <button type="button" onClick={() => handleKeyDown({ key: 'Enter', preventDefault: () => {} }, 'pickup')} className="bg-taxi-yellow text-black font-bold px-4 rounded-lg hover:bg-yellow-400 transition-colors shadow-lg" title="Set Location">
+                        Set
+                      </button>
                       <button type="button" onClick={handleCurrentLocation} className="bg-white/10 hover:bg-white/20 text-white px-4 rounded-lg transition-colors border border-white/10" title="Use Current Location">
                         <i className="fa-solid fa-location-crosshairs text-taxi-yellow"></i>
                       </button>
@@ -759,6 +779,9 @@ export default function Booking() {
                   <div className="mb-3 relative">
                     <div className="flex gap-2">
                       <input type="text" id="destination" className="input-modern flex-grow" defaultValue={formData.destination} onBlur={(e) => setFormData(prev => ({...prev, destination: e.target.value}))} onKeyDown={(e) => handleKeyDown(e, 'destination')} required placeholder="Search destination (Press Enter)" />
+                      <button type="button" onClick={() => handleKeyDown({ key: 'Enter', preventDefault: () => {} }, 'destination')} className="bg-taxi-yellow text-black font-bold px-4 rounded-lg hover:bg-yellow-400 transition-colors shadow-lg" title="Set Location">
+                        Set
+                      </button>
                     </div>
                   </div>
                   <p className="text-xs text-gray-400 text-center mt-2 italic">Press Enter to search, or click on the map below</p>
