@@ -32,10 +32,10 @@ export default function Header() {
           
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative w-12 h-12 flex items-center justify-center bg-taxi-yellow/10 rounded-xl transition-transform duration-300">
-              <img src="/images/Logo_GIF_PB08TAXI.gif" alt="PB08 TAXI" className="w-10 h-10 object-contain" />
+            <div className="relative h-12 w-32 sm:w-40 flex items-center justify-center transition-transform duration-300">
+              <img src="/images/Logo_GIF_PB08TAXI.gif" alt="PB08 TAXI" className="w-full h-full object-contain drop-shadow-[0_0_8px_rgba(255,215,0,0.3)]" />
             </div>
-            <div>
+            <div className="hidden md:block">
               <h1 className="text-2xl font-bold text-white tracking-wider group-hover:text-taxi-yellow transition-colors duration-300" style={{ margin: 0, lineHeight: 1.2 }}>
                 PB08 <span className="text-taxi-yellow">TAXI</span>
               </h1>
