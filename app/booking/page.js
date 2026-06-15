@@ -667,14 +667,14 @@ export default function Booking() {
 
             const pInput = document.getElementById('pickup');
             if (pInput) {
-               new window.mappls.search(pInput, { map: mapInstance.current, filter: "cop:IN" }, (data) => {
+               new window.mappls.search(pInput, { map: mapInstance.current }, (data) => {
                   handlePluginData('pickup', data);
                });
             }
 
             const dInput = document.getElementById('destination');
             if (dInput) {
-               new window.mappls.search(dInput, { map: mapInstance.current, filter: "cop:IN" }, (data) => {
+               new window.mappls.search(dInput, { map: mapInstance.current }, (data) => {
                   handlePluginData('destination', data);
                });
             }
