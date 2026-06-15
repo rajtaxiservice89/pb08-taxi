@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export default function Header() {
+export default function Header({ settings }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
@@ -21,9 +21,12 @@ export default function Header() {
     { name: 'Home', path: '/' },
     { name: 'Booking', path: '/booking' },
     { name: 'Driver Attachment', path: '/driver' },
-    { name: 'Contact Us', path: '/contact' },
-    { name: 'Admin Login', path: '/admin' }
+    { name: 'Contact Us', path: '/contact' }
   ];
+
+  if (settings?.showAdminLoginInHeader !== false) {
+    navLinks.push({ name: 'Admin Login', path: '/admin' });
+  }
 
   return (
     <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'header-scrolled py-3' : 'bg-transparent py-5'}`}>

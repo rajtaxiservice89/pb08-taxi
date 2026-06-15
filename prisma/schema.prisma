@@ -25,8 +25,9 @@ model SiteSetting {
   address   String   @default("Main Street, City Center")
   whatsapp1 String   @default("9056273306")
   whatsapp2 String   @default("9888079736")
-  secretPin String   @default("333725")
-  updatedAt DateTime @updatedAt
+  secretPin              String   @default("333725")
+  showAdminLoginInHeader Boolean  @default(true)
+  updatedAt              DateTime @updatedAt
 }
 
 model Booking {

@@ -9,9 +9,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('bookings');
   const [bookings, setBookings] = useState([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
-  const [settings, setSettings] = useState({
-    heroTitle: '', heroText: '', phone1: '', phone2: '', email: '', address: ''
-  });
+  const [settings, setSettings] = useState({ heroTitle: '', heroText: '', phone1: '', phone2: '', email: '', address: '', whatsapp1: '', whatsapp2: '', secretPin: '', showAdminLoginInHeader: true });
   const [savingSettings, setSavingSettings] = useState(false);
 
   // Fare Settings State
@@ -1261,20 +1259,58 @@ export default function AdminDashboard() {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="text-xs text-gray-400 mb-1 block">Phone 1</label>
-                            <input type="text" className="input-modern bg-black/30" value={settings.phone1} onChange={(e) => setSettings({...settings, phone1: e.target.value})} />
+                            <input type="text" className="input-modern bg-black/30" value={settings.phone1 || ''} onChange={(e) => setSettings({...settings, phone1: e.target.value})} />
                           </div>
                           <div>
                             <label className="text-xs text-gray-400 mb-1 block">Phone 2</label>
-                            <input type="text" className="input-modern bg-black/30" value={settings.phone2} onChange={(e) => setSettings({...settings, phone2: e.target.value})} />
+                            <input type="text" className="input-modern bg-black/30" value={settings.phone2 || ''} onChange={(e) => setSettings({...settings, phone2: e.target.value})} />
                           </div>
                         </div>
                         <div>
                           <label className="text-xs text-gray-400 mb-1 block">Office Email</label>
-                          <input type="text" className="input-modern bg-black/30" value={settings.email} onChange={(e) => setSettings({...settings, email: e.target.value})} />
+                          <input type="text" className="input-modern bg-black/30" value={settings.email || ''} onChange={(e) => setSettings({...settings, email: e.target.value})} />
                         </div>
                         <div>
                           <label className="text-xs text-gray-400 mb-1 block">Address</label>
-                          <input type="text" className="input-modern bg-black/30" value={settings.address} onChange={(e) => setSettings({...settings, address: e.target.value})} />
+                          <input type="text" className="input-modern bg-black/30" value={settings.address || ''} onChange={(e) => setSettings({...settings, address: e.target.value})} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="glass-card p-6 border-white/5 bg-black/20 rounded-xl border border-white/10">
+                      <h4 className="text-[#25D366] font-semibold mb-4 border-b border-white/10 pb-2"><i className="fa-brands fa-whatsapp mr-2"></i> WhatsApp Integration</h4>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-xs text-gray-400 mb-1 block">WhatsApp API No 1</label>
+                            <input type="text" className="input-modern bg-black/30" value={settings.whatsapp1 || ''} onChange={(e) => setSettings({...settings, whatsapp1: e.target.value})} />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-400 mb-1 block">WhatsApp API No 2</label>
+                            <input type="text" className="input-modern bg-black/30" value={settings.whatsapp2 || ''} onChange={(e) => setSettings({...settings, whatsapp2: e.target.value})} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="glass-card p-6 border-white/5 bg-black/20 rounded-xl border border-white/10">
+                      <h4 className="text-red-400 font-semibold mb-4 border-b border-white/10 pb-2"><i className="fa-solid fa-lock mr-2"></i> System Security & Layout</h4>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-xs text-gray-400 mb-1 block">Admin Secret PIN (6 digits)</label>
+                          <input type="text" maxLength={6} className="input-modern bg-black/30" value={settings.secretPin || ''} onChange={(e) => setSettings({...settings, secretPin: e.target.value})} />
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-black/30 rounded-lg border border-white/5 mt-4">
+                          <div>
+                            <h5 className="text-sm font-semibold text-white">Show Admin Login in Navbar</h5>
+                            <p className="text-xs text-gray-400">If disabled, it will still be accessible via Footer Quick Links.</p>
+                          </div>
+                          <button 
+                            onClick={() => setSettings({...settings, showAdminLoginInHeader: !settings.showAdminLoginInHeader})}
+                            className={`w-12 h-6 rounded-full relative transition-colors ${settings.showAdminLoginInHeader !== false ? 'bg-taxi-yellow' : 'bg-gray-600'}`}
+                          >
+                            <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${settings.showAdminLoginInHeader !== false ? 'translate-x-7' : 'translate-x-1'}`}></div>
+                          </button>
                         </div>
                       </div>
                     </div>

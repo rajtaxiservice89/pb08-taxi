@@ -16,10 +16,11 @@ export async function GET() {
           phone1: "9056273306",
           phone2: "9888079736",
           email: "info@pb08taxi.com",
-          address: "123 Taxi Street, City",
-          facebook: "",
-          instagram: "",
-          twitter: ""
+          address: "Main Street, City Center, Jalandhar, Punjab",
+          whatsapp1: "9056273306",
+          whatsapp2: "9888079736",
+          secretPin: "333725",
+          showAdminLoginInHeader: true
         }
       });
     }

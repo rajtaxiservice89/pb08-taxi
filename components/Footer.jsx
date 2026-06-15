@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 
-export default function Footer() {
+export default function Footer({ settings }) {
   return (
     <footer className="mt-auto relative overflow-hidden border-t border-white/10 bg-black/80 pt-16 pb-8">
       {/* Decorative gradient orb */}
@@ -47,6 +47,7 @@ export default function Footer() {
               <li><Link href="/booking" className="text-gray-400 hover:text-taxi-yellow transition-colors text-sm flex items-center gap-2"><i className="fa-solid fa-chevron-right text-[10px]"></i> Book a Ride</Link></li>
               <li><Link href="/driver" className="text-gray-400 hover:text-taxi-yellow transition-colors text-sm flex items-center gap-2"><i className="fa-solid fa-chevron-right text-[10px]"></i> Attach Your Taxi</Link></li>
               <li><Link href="/contact" className="text-gray-400 hover:text-taxi-yellow transition-colors text-sm flex items-center gap-2"><i className="fa-solid fa-chevron-right text-[10px]"></i> Contact Us</Link></li>
+              <li><Link href="/admin" className="text-gray-400 hover:text-taxi-yellow transition-colors text-sm flex items-center gap-2"><i className="fa-solid fa-chevron-right text-[10px]"></i> Admin Login</Link></li>
             </ul>
           </div>
 
@@ -73,22 +74,22 @@ export default function Footer() {
                 <div className="w-8 h-8 rounded-lg glass-panel flex items-center justify-center shrink-0">
                   <i className="fa-solid fa-location-dot text-taxi-yellow text-sm"></i>
                 </div>
-                <span className="text-gray-400 text-sm">Main Street, City Center, Jalandhar, Punjab</span>
+                <span className="text-gray-400 text-sm">{settings?.address || 'Main Street, City Center, Jalandhar, Punjab'}</span>
               </li>
               <li className="flex items-center gap-4">
                 <div className="w-8 h-8 rounded-lg glass-panel flex items-center justify-center shrink-0">
                   <i className="fa-solid fa-phone text-taxi-yellow text-sm"></i>
                 </div>
                 <div className="flex flex-col">
-                  <a href="tel:9056273306" className="text-gray-400 hover:text-taxi-yellow transition-colors text-sm">9056273306</a>
-                  <a href="tel:9888079736" className="text-gray-400 hover:text-taxi-yellow transition-colors text-sm">9888079736</a>
+                  <a href={`tel:${settings?.phone1 || '9056273306'}`} className="text-gray-400 hover:text-taxi-yellow transition-colors text-sm">{settings?.phone1 || '9056273306'}</a>
+                  <a href={`tel:${settings?.phone2 || '9888079736'}`} className="text-gray-400 hover:text-taxi-yellow transition-colors text-sm">{settings?.phone2 || '9888079736'}</a>
                 </div>
               </li>
               <li className="flex items-center gap-4">
                 <div className="w-8 h-8 rounded-lg glass-panel flex items-center justify-center shrink-0">
                   <i className="fa-solid fa-envelope text-taxi-yellow text-sm"></i>
                 </div>
-                <a href="mailto:info@pb08taxi.com" className="text-gray-400 hover:text-taxi-yellow transition-colors text-sm">info@pb08taxi.com</a>
+                <a href={`mailto:${settings?.email || 'info@pb08taxi.com'}`} className="text-gray-400 hover:text-taxi-yellow transition-colors text-sm">{settings?.email || 'info@pb08taxi.com'}</a>
               </li>
             </ul>
           </div>

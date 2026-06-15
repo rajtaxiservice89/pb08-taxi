@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { prisma } from '@/lib/prisma';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,7 +35,25 @@ export const viewport = {
   themeColor: "#050505"
 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  let settings = null;
+  try {
+    settings = await prisma.siteSetting.findFirst();
+  } catch (e) {
+    console.error("Layout fetch settings error:", e);
+  }
+
+  // Ensure default structure if DB fails or is empty
+  if (!settings) {
+    settings = {
+      phone1: "9056273306",
+      phone2: "9888079736",
+      email: "info@pb08taxi.com",
+      address: "Main Street, City Center, Jalandhar, Punjab",
+      showAdminLoginInHeader: true
+    };
+  }
+
   return (
     <html lang="en">
       <head>
@@ -44,11 +63,11 @@ export default function RootLayout({ children }) {
         <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
       </head>
       <body>
-        <Header />
+        <Header settings={settings} />
         <main className="main-content flex-1 flex flex-col">
           {children}
         </main>
-        <Footer />
+        <Footer settings={settings} />
       </body>
     </html>
   );
