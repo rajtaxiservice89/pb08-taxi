@@ -763,7 +763,7 @@ export default function Booking() {
                     )}
                   </div>
                   <div className="relative">
-                    <div ref={pickupMapRef} className="w-full h-64 rounded-lg border border-white/20 mb-3" style={{ background: '#222' }}></div>
+                    <div id="pickupMap" ref={pickupMapRef} className="w-full h-64 rounded-lg border border-white/20 mb-3 relative overflow-hidden" style={{ background: '#222' }}></div>
                   </div>
                   <p className="text-xs text-gray-400 text-center mt-2 italic">Click or drag pin on map to set pickup location</p>
                 </div>
@@ -796,7 +796,7 @@ export default function Booking() {
                     )}
                   </div>
                   <div className="relative">
-                    <div ref={dropMapRef} className="w-full h-64 rounded-lg border border-white/20 mb-3" style={{ background: '#222' }}></div>
+                    <div id="dropMap" ref={dropMapRef} className="w-full h-64 rounded-lg border border-white/20 mb-3 relative overflow-hidden" style={{ background: '#222' }}></div>
                   </div>
                   <p className="text-xs text-gray-400 text-center mt-2 italic">Click or drag pin on map to set destination</p>
                 </div>
