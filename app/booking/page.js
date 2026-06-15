@@ -32,32 +32,6 @@ export default function Booking() {
 
 
 
-  const mapplsSdkGeocode = async (q) => {
-     return new Promise((resolve) => {
-         if (!window.mappls || !window.mappls.search) return resolve(null);
-         try {
-             new window.mappls.search(q, {}, (data) => {
-                 let r = null;
-                 if (Array.isArray(data)) r = data[0];
-                 else if (data && data.data && Array.isArray(data.data)) r = data.data[0];
-                 else if (data && data.suggestedLocations && Array.isArray(data.suggestedLocations)) r = data.suggestedLocations[0];
-                 else r = data;
-
-                 if (!r) return resolve(null);
-
-                 const lat = parseFloat(r.latitude || r.lat || r.y || r.latPos || 0);
-                 const lng = parseFloat(r.longitude || r.lng || r.lon || r.x || r.lonPos || 0);
-                 const display = r.placeName || r.placeAddress || r.eLoc || r.name || q;
-
-                 if (lat && lng) resolve({ lat, lng, display });
-                 else resolve(null);
-             });
-         } catch(e) {
-             resolve(null);
-         }
-     });
-  };
-
   const handleKeyDown = async (e, type) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -72,15 +46,7 @@ export default function Booking() {
           setFormData(prev => ({ ...prev, destination: query }));
       }
 
-      let r = null;
-      if (locationApiConfig.provider === 'mappls') {
-          r = await mapplsSdkGeocode(query);
-      }
-      
-      if (!r) {
-          r = await geocode(query);
-      }
-      
+      const r = await geocode(query);
       if (r) {
         if (type === 'pickup') {
           setPickup(r.lng, r.lat, r.display);
@@ -633,6 +599,9 @@ export default function Booking() {
           setTimeout(() => {
             const handlePluginData = (type, data) => {
                if(data) {
+                  // DEBUG ALERT TO SEE MAPPLS DATA STRUCTURE
+                  alert("DEBUG_MAPPLS_DATA: " + JSON.stringify(data));
+                  
                   let r = null;
                   if (Array.isArray(data)) r = data[0];
                   else if (data.data && Array.isArray(data.data)) r = data.data[0];
