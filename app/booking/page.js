@@ -284,7 +284,7 @@ export default function Booking() {
       if (locationApiConfig.provider === 'mappls') {
            // Fallback to nominatim for reverse geocode since Mappls REST requires OAuth
            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
-           const response = await fetch(url);
+           const response = await fetch(url, { headers: { 'User-Agent': 'RajTaxiApp/1.0' } });
            const data = await response.json();
            return data && data.display_name ? data.display_name : "Location found";
       }
@@ -321,9 +321,9 @@ export default function Booking() {
     try {
       if (locationApiConfig.provider === 'mappls') {
            // Fallback to nominatim
-           const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`;
-           const res = await fetch(url);
-           const data = await res.json();
+           const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=in`;
+           const response = await fetch(url, { headers: { 'User-Agent': 'RajTaxiApp/1.0' } });
+           const data = await response.json();
            if(data && data.length > 0) {
               return data.map(item => ({
                  display: item.display_name,
@@ -447,14 +447,23 @@ export default function Booking() {
   };
 
   const setPickup = async (lng, lat, addr) => {
-    if(pickupMarkerRef.current) pickupMarkerRef.current.remove();
+    setFormData(prev => ({ ...prev, pickupLat: lat, pickupLng: lng, pickup: addr || prev.pickup }));
+    if(pickupMarkerRef.current) {
+        try { pickupMarkerRef.current.remove(); } catch(e) {}
+        try { pickupMarkerRef.current.setMap(null); } catch(e) {}
+    }
     if (locationApiConfig.provider === 'mappls') {
        pickupMarkerRef.current = new window.mappls.Marker({ map: pMapInstance.current, position: {lat, lng}, draggable: true, icon: 'https://apis.mapmyindia.com/map_v3/1.png' });
-       pickupMarkerRef.current.addListener('dragend', async (e) => {
+       const attachDrag = (m) => m.addListener ? m.addListener('dragend', async () => {
           const ll = pickupMarkerRef.current.getPosition();
           const a = await revGeocode(ll.lat, ll.lng);
           setFormData(prev => ({ ...prev, pickupLat: ll.lat, pickupLng: ll.lng, pickup: a || prev.pickup }));
+       }) : m.on('dragend', async () => {
+          const ll = pickupMarkerRef.current.getPosition ? pickupMarkerRef.current.getPosition() : pickupMarkerRef.current.getLngLat();
+          const a = await revGeocode(ll.lat || ll.lat, ll.lng || ll.lng);
+          setFormData(prev => ({ ...prev, pickupLat: ll.lat, pickupLng: ll.lng, pickup: a || prev.pickup }));
        });
+       attachDrag(pickupMarkerRef.current);
     } else {
        pickupMarkerRef.current = new mapLibreRef.current.Marker({ color: '#22c55e', draggable: true })
          .setLngLat([lng, lat])
@@ -468,14 +477,23 @@ export default function Booking() {
   };
 
   const setDest = async (lng, lat, addr) => {
-    if(destMarkerRef.current) destMarkerRef.current.remove();
+    setFormData(prev => ({ ...prev, destLat: lat, destLng: lng, destination: addr || prev.destination }));
+    if(destMarkerRef.current) {
+        try { destMarkerRef.current.remove(); } catch(e) {}
+        try { destMarkerRef.current.setMap(null); } catch(e) {}
+    }
     if (locationApiConfig.provider === 'mappls') {
        destMarkerRef.current = new window.mappls.Marker({ map: dMapInstance.current, position: {lat, lng}, draggable: true, icon: 'https://apis.mapmyindia.com/map_v3/2.png' });
-       destMarkerRef.current.addListener('dragend', async (e) => {
+       const attachDrag = (m) => m.addListener ? m.addListener('dragend', async () => {
           const ll = destMarkerRef.current.getPosition();
           const a = await revGeocode(ll.lat, ll.lng);
           setFormData(prev => ({ ...prev, destLat: ll.lat, destLng: ll.lng, destination: a || prev.destination }));
+       }) : m.on('dragend', async () => {
+          const ll = destMarkerRef.current.getPosition ? destMarkerRef.current.getPosition() : destMarkerRef.current.getLngLat();
+          const a = await revGeocode(ll.lat || ll.lat, ll.lng || ll.lng);
+          setFormData(prev => ({ ...prev, destLat: ll.lat, destLng: ll.lng, destination: a || prev.destination }));
        });
+       attachDrag(destMarkerRef.current);
     } else {
        destMarkerRef.current = new mapLibreRef.current.Marker({ color: '#ef4444', draggable: true })
          .setLngLat([lng, lat])
@@ -528,20 +546,30 @@ export default function Booking() {
 
     if (locationApiConfig.provider === 'mappls') {
        if (!window.mappls) return;
-       // Mappls Native Map accepts ID strings, not DOM nodes
-       pMapInstance.current = new window.mappls.Map('pickupMap', { center: [initial.lat, initial.lng], zoom: initial.zoom });
-       dMapInstance.current = new window.mappls.Map('dropMap', { center: [initial.lat, initial.lng], zoom: initial.zoom });
-       
-       pMapInstance.current.addListener('click', async (e) => {
-          const lat = e.lngLat.lat, lng = e.lngLat.lng;
-          const a = await revGeocode(lat, lng);
-          setPickup(lng, lat, a);
-       });
-       dMapInstance.current.addListener('click', async (e) => {
-          const lat = e.lngLat.lat, lng = e.lngLat.lng;
-          const a = await revGeocode(lat, lng);
-          setDest(lng, lat, a);
-       });
+       try {
+           pMapInstance.current = new window.mappls.Map('pickupMap', { center: [initial.lat, initial.lng], zoom: initial.zoom });
+           dMapInstance.current = new window.mappls.Map('dropMap', { center: [initial.lat, initial.lng], zoom: initial.zoom });
+           
+           const attachMapClick = (map, setter) => {
+               if (map.addListener) {
+                   map.addListener('click', async (e) => {
+                       const lat = e.lngLat.lat, lng = e.lngLat.lng;
+                       const a = await revGeocode(lat, lng);
+                       setter(lng, lat, a);
+                   });
+               } else if (map.on) {
+                   map.on('click', async (e) => {
+                       const lat = e.lngLat.lat, lng = e.lngLat.lng;
+                       const a = await revGeocode(lat, lng);
+                       setter(lng, lat, a);
+                   });
+               }
+           };
+           attachMapClick(pMapInstance.current, setPickup);
+           attachMapClick(dMapInstance.current, setDest);
+       } catch (err) {
+           console.error("Mappls Init Error:", err);
+       }
        
        // Attach Mappls Search Plugin to the input fields if available
        if (window.mappls.search) {
