@@ -500,7 +500,8 @@ export default function Booking() {
   };
 
   const initMaps = () => {
-    if (!pickupMapRef.current || !dropMapRef.current || !mapLibreRef.current) return;
+    if (!pickupMapRef.current || !dropMapRef.current) return;
+    if (locationApiConfig.provider !== 'mappls' && !mapLibreRef.current) return;
     if (pMapInstance.current) return; // already init
 
     const initial = { lng: 75.5762, lat: 31.3260, zoom: 12 };
