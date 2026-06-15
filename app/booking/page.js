@@ -511,20 +511,22 @@ export default function Booking() {
       sources: {
         baseMap: {
           type: 'raster',
-          tiles: locationApiConfig.provider === 'locationiq' && locationApiConfig.apiKey
-            ? [`https://tiles-eu.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${locationApiConfig.apiKey}`]
-            : [
-              'https://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}',
-              'https://mt1.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}',
-              'https://mt2.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}',
-              'https://mt3.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}'
-            ],
+          tiles: [
+            'https://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}',
+            'https://mt1.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}',
+            'https://mt2.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}',
+            'https://mt3.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}'
+          ],
           tileSize: 256,
-          attribution: locationApiConfig.provider === 'locationiq' ? 'Map data © LocationIQ & OpenStreetMap' : 'Map data © Google'
+          attribution: 'Map data © Google'
         }
       },
       layers: [ { id: 'baseMap', type: 'raster', source: 'baseMap' } ]
     };
+
+    if (locationApiConfig.provider === 'locationiq' && locationApiConfig.apiKey) {
+      finalStyle = `https://tiles.locationiq.com/v3/streets/raster.json?key=${locationApiConfig.apiKey}`;
+    }
 
     if (locationApiConfig.provider === 'geoapify' && locationApiConfig.apiKey) {
       let keys = [locationApiConfig.apiKey];
