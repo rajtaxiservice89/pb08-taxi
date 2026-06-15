@@ -296,7 +296,7 @@ export default function AdminDashboard() {
         url = `https://api.geoapify.com/v1/geocode/search?text=delhi&apiKey=${api.apiKey}&format=json&limit=1`;
         res = await fetch(url);
       } else if (api.provider === 'mappls') {
-        url = `https://apis.mappls.com/advancedmaps/api/${api.apiKey}/map_sdk?layer=vector&v=3.0`;
+        url = `https://sdk.mappls.com/map/sdk/web?v=3.0&access_token=${api.apiKey}`;
         res = await fetch(url);
       } else if (api.provider === 'nominatim') {
         url = `https://nominatim.openstreetmap.org/search?q=delhi&format=json&limit=1`;
