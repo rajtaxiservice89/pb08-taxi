@@ -22,6 +22,7 @@ export default function AdminDashboard() {
   const [locationApis, setLocationApis] = useState([]);
   const [newApi, setNewApi] = useState({ provider: 'locationiq', apiKey: '' });
   const [mapplsKeys, setMapplsKeys] = useState({ clientId: '', clientSecret: '' });
+  const [testingApi, setTestingApi] = useState(null);
   const [isLocationApisUnlocked, setIsLocationApisUnlocked] = useState(false);
   const [locationApiPinInput, setLocationApiPinInput] = useState('');
 
@@ -281,6 +282,45 @@ export default function AdminDashboard() {
       const res = await fetch(`/api/admin/settings/location-apis?id=${id}`, { method: 'DELETE' });
       if(res.ok) fetchLocationApis();
     } catch(e) { alert("Error deleting API"); }
+  };
+
+  const handleTestApi = async (api) => {
+    setTestingApi(api.id);
+    try {
+      let url = '';
+      let res;
+      if (api.provider === 'locationiq') {
+        url = `https://us1.locationiq.com/v1/search?key=${api.apiKey}&q=delhi&format=json&limit=1`;
+        res = await fetch(url);
+      } else if (api.provider === 'geoapify') {
+        url = `https://api.geoapify.com/v1/geocode/search?text=delhi&apiKey=${api.apiKey}&format=json&limit=1`;
+        res = await fetch(url);
+      } else if (api.provider === 'mappls') {
+        url = `https://apis.mappls.com/advancedmaps/api/${api.apiKey}/map_sdk?layer=vector&v=3.0`;
+        res = await fetch(url);
+      } else if (api.provider === 'nominatim') {
+        url = `https://nominatim.openstreetmap.org/search?q=delhi&format=json&limit=1`;
+        res = await fetch(url);
+      } else {
+        alert("API Not Working");
+        setTestingApi(null);
+        return;
+      }
+
+      if (res.ok || res.status === 200) {
+        alert("API Working Perfect");
+      } else if (res.status === 401 || res.status === 403) {
+        alert("API Expire");
+      } else if (res.status >= 500) {
+        alert("API Error Service Provider");
+      } else {
+        alert("API Not Working");
+      }
+    } catch (e) {
+      alert("API Error Own Site");
+    } finally {
+      setTestingApi(null);
+    }
   };
 
   const handleUpdateTier = (index, field, value) => {
@@ -1189,6 +1229,13 @@ export default function AdminDashboard() {
                                       Set Active
                                     </button>
                                   )}
+                                  <button 
+                                    onClick={() => handleTestApi(api)}
+                                    disabled={testingApi === api.id}
+                                    className="px-3 py-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
+                                  >
+                                    {testingApi === api.id ? <i className="fa-solid fa-spinner fa-spin"></i> : "Test API"}
+                                  </button>
                                   <button 
                                     onClick={() => handleDeleteLocationApi(api.id)}
                                     className="px-3 py-1 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg text-xs font-bold transition-colors"
