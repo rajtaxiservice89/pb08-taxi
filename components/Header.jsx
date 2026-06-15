@@ -31,9 +31,9 @@ export default function Header() {
         <div className="flex items-center justify-between">
           
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative h-16 w-48 sm:h-20 sm:w-64 flex items-center justify-center transition-transform duration-300 -ml-2">
-              <img src="/images/Logo_GIF_PB08TAXI.gif" alt="PB08 TAXI" className="w-full h-full object-contain scale-[1.3] sm:scale-[1.5] drop-shadow-[0_0_8px_rgba(255,215,0,0.3)]" />
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="relative h-14 w-24 sm:h-16 sm:w-32 flex items-center justify-center transition-transform duration-300">
+              <img src="/images/Logo_GIF_PB08TAXI.gif" alt="PB08 TAXI" className="w-full h-full object-cover mix-blend-screen scale-[1.4] sm:scale-[1.6]" />
             </div>
             <div className="hidden md:block">
               <h1 className="text-2xl font-bold text-white tracking-wider group-hover:text-taxi-yellow transition-colors duration-300" style={{ margin: 0, lineHeight: 1.2 }}>
