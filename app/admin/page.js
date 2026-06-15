@@ -195,7 +195,7 @@ export default function AdminDashboard() {
       const res = await fetch('/api/admin/settings/location-apis');
       if (res.ok) {
         const data = await res.json();
-        setLocationApis(data.apis || []);
+        setLocationApis(Array.isArray(data) ? data : (data.apis || []));
       }
     } catch (e) { console.error(e); }
   };
