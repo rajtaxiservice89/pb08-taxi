@@ -118,6 +118,13 @@ export default function Booking() {
         const res = await fetch('/api/settings/location-api');
         if (res.ok) {
           const data = await res.json();
+          if (data.provider === 'mappls') {
+             const tRes = await fetch('/api/mappls/token');
+             if (tRes.ok) {
+                const tData = await tRes.json();
+                data.token = tData.access_token;
+             }
+          }
           setLocationApiConfig(data);
         }
       } catch (e) { console.error('Error fetching location API config'); }
@@ -134,8 +141,14 @@ export default function Booking() {
 
   const fetchAndDrawRoute = async () => {
     try {
-      const url = `https://router.project-osrm.org/route/v1/driving/${formData.pickupLng},${formData.pickupLat};${formData.destLng},${formData.destLat}?overview=full&geometries=geojson`;
-      const res = await fetch(url);
+      let url = `https://router.project-osrm.org/route/v1/driving/${formData.pickupLng},${formData.pickupLat};${formData.destLng},${formData.destLat}?overview=full&geometries=geojson`;
+      let headers = {};
+      
+      if (locationApiConfig.provider === 'mappls' && locationApiConfig.token) {
+         url = `https://apis.mappls.com/advancedmaps/v1/${locationApiConfig.token}/route_adv/driving/${formData.pickupLng},${formData.pickupLat};${formData.destLng},${formData.destLat}?geometries=geojson`;
+      }
+      
+      const res = await fetch(url, { headers });
       const data = await res.json();
       
       if (data.routes && data.routes.length > 0) {
@@ -268,6 +281,20 @@ export default function Booking() {
 
   const autocompleteSearch = async (q) => {
     try {
+      if (locationApiConfig.provider === 'mappls' && locationApiConfig.token) {
+         const url = `https://atlas.mappls.com/api/places/search/json?query=${encodeURIComponent(q)}&region=IND`;
+         const res = await fetch(url, { headers: { 'Authorization': `bearer ${locationApiConfig.token}` }});
+         const data = await res.json();
+         if (data.suggestedLocations) {
+            return data.suggestedLocations.map(r => ({
+               lat: parseFloat(r.latitude),
+               lng: parseFloat(r.longitude),
+               display: r.placeName + (r.placeAddress ? `, ${r.placeAddress}` : '')
+            }));
+         }
+         return [];
+      }
+
       let keys = [locationApiConfig.apiKey];
       if (locationApiConfig.apiKey && locationApiConfig.apiKey.includes(',')) {
          keys = locationApiConfig.apiKey.split(',').map(k => k.trim());
@@ -313,6 +340,17 @@ export default function Booking() {
 
   const geocode = async (q) => {
     try {
+      if (locationApiConfig.provider === 'mappls' && locationApiConfig.token) {
+         const url = `https://atlas.mappls.com/api/places/search/json?query=${encodeURIComponent(q)}&region=IND`;
+         const res = await fetch(url, { headers: { 'Authorization': `bearer ${locationApiConfig.token}` }});
+         const data = await res.json();
+         if (data.suggestedLocations && data.suggestedLocations.length > 0) {
+            const r = data.suggestedLocations[0];
+            return { lat: parseFloat(r.latitude), lng: parseFloat(r.longitude), display: r.placeName + (r.placeAddress ? `, ${r.placeAddress}` : '') };
+         }
+         return null;
+      }
+
       let keys = [locationApiConfig.apiKey];
       if (locationApiConfig.apiKey && locationApiConfig.apiKey.includes(',')) {
          keys = locationApiConfig.apiKey.split(',').map(k => k.trim());
