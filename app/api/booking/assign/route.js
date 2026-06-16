@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { pusherServer } from '@/lib/pusher';
-
-const prisma = new PrismaClient();
 
 // Haversine formula to calculate distance between two coordinates in kilometers
 function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {

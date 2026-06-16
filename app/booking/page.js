@@ -323,6 +323,7 @@ export default function Booking() {
 
   const autocompleteSearch = async (q) => {
     try {
+      if (locationApiConfig.provider === 'mappls') {
            // Mappls auto complete proxy
            if (locationApiConfig.token) {
                try {
