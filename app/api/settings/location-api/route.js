@@ -8,13 +8,11 @@ export async function GET() {
     });
     
     if (!activeApi) {
-      // Fallback to nominatim without API key if nothing is configured
-      return NextResponse.json({ provider: 'nominatim', apiKey: '' });
+      return NextResponse.json({ provider: 'none', apiKey: '' });
     }
 
     return NextResponse.json(activeApi);
   } catch (error) {
-    // Graceful fallback
-    return NextResponse.json({ provider: 'nominatim', apiKey: '' });
+    return NextResponse.json({ provider: 'none', apiKey: '' });
   }
 }

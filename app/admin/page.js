@@ -1175,15 +1175,13 @@ export default function AdminDashboard() {
                         <option value="mappls">Mappls (MapmyIndia)</option>
                         <option value="locationiq">LocationIQ</option>
                         <option value="mapbox">Mapbox</option>
-                        <option value="nominatim">Nominatim (Free, No Key required)</option>
                       </select>
                       
                       <input 
                         type="text" 
-                        placeholder={newApi.provider === 'nominatim' ? "API Key not needed" : "Enter API Key (Static Key)"} 
+                        placeholder="Enter API Key (Static Key)" 
                         className="input-modern bg-black/30 w-full md:flex-1"
                         value={newApi.apiKey}
-                        disabled={newApi.provider === 'nominatim'}
                         onChange={(e) => setNewApi({...newApi, apiKey: e.target.value})}
                       />
                       
@@ -1196,7 +1194,7 @@ export default function AdminDashboard() {
                   <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
                     <h4 className="text-lg font-bold text-white mb-4">Saved APIs</h4>
                     {locationApis.length === 0 ? (
-                      <p className="text-gray-400 text-sm">No Location APIs added yet. Using default Nominatim.</p>
+                      <p className="text-gray-400 text-sm">No Location APIs added yet. Map features are disabled.</p>
                     ) : (
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm text-gray-300">
@@ -1593,6 +1591,17 @@ export default function AdminDashboard() {
                                 <a href={`/driver/dashboard?driverId=${d.id}`} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 text-xs font-semibold border border-purple-500/30 px-2 py-1 rounded bg-purple-500/10 mb-2 mr-2 inline-block">
                                   <i className="fa-solid fa-chart-line"></i> Dashboard
                                 </a>
+
+                                {/* Live Map Action */}
+                                {d.currentLat && d.currentLng ? (
+                                  <a href={`https://www.google.com/maps?q=${d.currentLat},${d.currentLng}`} target="_blank" rel="noopener noreferrer" className="text-[#25D366] hover:text-green-300 text-xs font-semibold border border-green-500/30 px-2 py-1 rounded bg-green-500/10 mb-2 mr-2 inline-block">
+                                    <i className="fa-solid fa-map-marker-alt animate-bounce"></i> Live Map
+                                  </a>
+                                ) : (
+                                  <button disabled className="text-gray-500 text-xs font-semibold border border-gray-600/30 px-2 py-1 rounded bg-gray-800/50 mb-2 mr-2 inline-block cursor-not-allowed" title="Location unknown">
+                                    <i className="fa-solid fa-map-marker-alt"></i> Offline
+                                  </button>
+                                )}
 
                                 {/* Resend Credentials */}
                                 <button onClick={() => resendCredentials(d)} className="text-orange-400 hover:text-orange-300 text-xs font-semibold border border-orange-500/30 px-2 py-1 rounded bg-orange-500/10 mr-2 mb-2">

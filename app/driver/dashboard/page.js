@@ -148,9 +148,14 @@ function DashboardContent() {
               <p className="text-gray-400 text-sm">Welcome back, {driver.name}! Manage your rides and schedule here.</p>
             </div>
             {!driverId && (
-              <button onClick={handleLogout} className="btn-outline px-4 py-2 border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white transition-colors">
-                Logout <i className="fa-solid fa-power-off ml-2"></i>
-              </button>
+              <div className="flex flex-wrap gap-4">
+                <button onClick={() => router.push('/driver/live')} className="btn-primary px-4 py-2 bg-green-600 hover:bg-green-500 text-white transition-colors">
+                  <i className="fa-solid fa-satellite-dish mr-2 animate-pulse"></i> Go Online (Live Tracking)
+                </button>
+                <button onClick={handleLogout} className="btn-outline px-4 py-2 border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white transition-colors">
+                  Logout <i className="fa-solid fa-power-off ml-2"></i>
+                </button>
+              </div>
             )}
           </div>
 

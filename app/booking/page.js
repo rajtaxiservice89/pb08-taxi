@@ -181,7 +181,8 @@ export default function Booking() {
       let headers = {};
       
       if (locationApiConfig.provider === 'mappls') {
-         // Fallback to nominatim for routing since Mappls REST API requires OAuth token
+         // Direct Mappls routing requires OAuth; if needed, implement REST proxy, otherwise use OSRM backend via API
+         // Here we just keep standard OSRM for now as it doesn't use Nominatim (routing only)
          url = `https://router.project-osrm.org/route/v1/driving/${formData.pickupLng},${formData.pickupLat};${formData.destLng},${formData.destLat}?overview=full&geometries=geojson`;
       }
       
@@ -288,16 +289,7 @@ export default function Booking() {
   const revGeocode = async (lat, lng) => {
     try{
       if (locationApiConfig.provider === 'mappls') {
-           // Fallback to nominatim for reverse geocode since Mappls REST requires OAuth
-           const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
-           const response = await fetch(url);
-           const data = await response.json();
-           if (data && data.address) {
-               const { road, suburb, neighbourhood, city, town, village, state } = data.address;
-               const parts = [road, neighbourhood || suburb, village || town || city, state].filter(Boolean);
-               if (parts.length > 0) return parts.join(', ');
-           }
-           return data && data.display_name ? data.display_name : "Location found";
+           return "Location found";
       }
 
       let keys = [locationApiConfig.apiKey];
@@ -318,20 +310,20 @@ export default function Booking() {
         return '';
       }
 
-      let url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
+      let url = '';
       if (locationApiConfig.provider === 'locationiq' && locationApiConfig.apiKey) {
         url = `https://us1.locationiq.com/v1/reverse?key=${locationApiConfig.apiKey}&lat=${lat}&lon=${lng}&format=json`;
+        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        const data = await res.json();
+        return data?.display_name || '';
       }
-      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-      const data = await res.json();
-      return data?.display_name || '';
+      return '';
     } catch { return ''; }
   };
 
   const autocompleteSearch = async (q) => {
     try {
-      if (locationApiConfig.provider === 'mappls') {
-           // We can proxy through our backend geocode endpoint to fetch autocomplete results
+           // Mappls auto complete proxy
            if (locationApiConfig.token) {
                try {
                    const res = await fetch(`/api/mappls/geocode?query=${encodeURIComponent(q)}&token=${locationApiConfig.token}`);
@@ -344,17 +336,6 @@ export default function Booking() {
                        }));
                    }
                } catch (e) { console.error('Mappls proxy auto fail', e); }
-           }
-           // Fallback to nominatim
-           const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=in`;
-           const response = await fetch(url);
-           const data = await response.json();
-           if(data && data.length > 0) {
-              return data.map(item => ({
-                 display: item.display_name,
-                 lat: parseFloat(item.lat),
-                 lng: parseFloat(item.lon)
-              }));
            }
            return [];
       }
@@ -386,11 +367,6 @@ export default function Booking() {
         const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
         data = await res.json();
         if (data.error) return [];
-      } else {
-        const query = `${q} India`;
-        const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&q=${encodeURIComponent(query)}`;
-        const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
-        data = await res.json();
       }
       
       if (data && data.length > 0) {
@@ -414,13 +390,6 @@ export default function Booking() {
               return { lat: parseFloat(r.latitude || r.lat || r.y || 0), lng: parseFloat(r.longitude || r.lng || r.x || 0), display: r.placeName + (r.placeAddress ? `, ${r.placeAddress}` : '') };
            }
          } catch(e) { console.error("Mappls Geocode Error:", e); }
-         // Fallback to Nominatim strictly constrained to India
-         const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=in`;
-         const res = await fetch(url);
-         const data = await res.json();
-         if (data && data.length > 0) {
-            return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name };
-         }
          return null;
       }
 
@@ -454,11 +423,6 @@ export default function Booking() {
         const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
         data = await res.json();
         if (data.error) return null;
-      } else {
-        const query = `${q} India`;
-        const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=in&q=${encodeURIComponent(query)}`;
-        const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
-        data = await res.json();
       }
       
       if (data && data.length > 0) {
