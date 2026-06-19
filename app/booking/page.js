@@ -14,6 +14,8 @@ export default function Booking() {
   const [fareSettings, setFareSettings] = useState(null);
   const [locationApiConfig, setLocationApiConfig] = useState({ provider: 'nominatim', apiKey: '' });
   const [configLoaded, setConfigLoaded] = useState(false);
+  const [activeInput, setActiveInput] = useState('pickup'); // Track which input is active
+  
   
   
   const mapRef = useRef(null);
@@ -594,11 +596,18 @@ export default function Booking() {
            mapInstance.current.addListener('click', async (e) => {
              const lat = e.lngLat.lat; const lng = e.lngLat.lng;
              const a = await revGeocode(lat, lng);
-             // By default set pickup if it's empty, else drop
-             if (!formData.pickup || formData.pickup === 'Fetching current location...') {
+             
+             // Check which input was last active/focused
+             if (activeInput === 'destination') {
+                 setDest(lng, lat, a);
+             } else if (activeInput === 'pickup') {
                  setPickup(lng, lat, a);
              } else {
-                 setDest(lng, lat, a);
+                 if (!formData.pickup || formData.pickup === 'Fetching current location...') {
+                     setPickup(lng, lat, a);
+                 } else {
+                     setDest(lng, lat, a);
+                 }
              }
            });
        } catch (err) {
@@ -675,12 +684,19 @@ export default function Booking() {
        mapInstance.current.addControl(new mapLibreRef.current.NavigationControl(), 'top-right');
 
        mapInstance.current.on('click', async (e) => {
-         const {lng, lat} = e.lngLat; 
-         const a = await revGeocode(lat, lng); 
-         if (!formData.pickup || formData.pickup === 'Fetching current location...') {
+         const { lng, lat } = e.lngLat;
+         const a = await revGeocode(lat, lng);
+         
+         if (activeInput === 'destination') {
+             setDest(lng, lat, a);
+         } else if (activeInput === 'pickup') {
              setPickup(lng, lat, a);
          } else {
-             setDest(lng, lat, a);
+             if (!formData.pickup || formData.pickup === 'Fetching current location...') {
+                 setPickup(lng, lat, a);
+             } else {
+                 setDest(lng, lat, a);
+             }
          }
        });
     }
@@ -795,7 +811,16 @@ export default function Booking() {
                       <div className="w-6 flex justify-center mr-2">
                          <div className="w-3 h-3 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
                       </div>
-                      <input type="text" id="pickup" className="bg-transparent border-none outline-none text-white w-full text-sm placeholder-gray-500" defaultValue={formData.pickup} onBlur={(e) => setFormData(prev => ({...prev, pickup: e.target.value}))} onKeyDown={(e) => handleKeyDown(e, 'pickup')} required placeholder="Search Pickup Location" />
+                      <input
+                        type="text"
+                        id="pickup"
+                        placeholder="Search Pickup Location"
+                        className="w-full bg-transparent text-gray-200 placeholder-gray-500 focus:outline-none px-2"
+                        value={formData.pickup}
+                        onChange={handleChange}
+                        onFocus={() => setActiveInput('pickup')}
+                        onKeyDown={(e) => handleKeyDown(e, 'pickup')}
+                      />
                       <button type="button" onClick={handleCurrentLocation} className="text-gray-400 hover:text-taxi-yellow px-2 transition-colors" title="Use Current Location">
                         <i className="fa-solid fa-location-crosshairs"></i>
                       </button>
@@ -806,7 +831,16 @@ export default function Booking() {
                       <div className="w-6 flex justify-center mr-2">
                          <div className="w-3 h-3 bg-red-500 rounded-sm shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>
                       </div>
-                      <input type="text" id="destination" className="bg-transparent border-none outline-none text-white w-full text-sm placeholder-gray-500" defaultValue={formData.destination} onBlur={(e) => setFormData(prev => ({...prev, destination: e.target.value}))} onKeyDown={(e) => handleKeyDown(e, 'destination')} required placeholder="Search Drop Location" />
+                      <input
+                        type="text"
+                        id="destination"
+                        placeholder="Search Drop Location"
+                        className="w-full bg-transparent text-gray-200 placeholder-gray-500 focus:outline-none px-2"
+                        value={formData.destination}
+                        onChange={handleChange}
+                        onFocus={() => setActiveInput('destination')}
+                        onKeyDown={(e) => handleKeyDown(e, 'destination')}
+                      />
                     </div>
                   </div>
                   
