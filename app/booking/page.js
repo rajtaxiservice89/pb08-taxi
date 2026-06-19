@@ -239,9 +239,7 @@ export default function Booking() {
       destText = dInput ? (dInput.value || dInput.placeholder || '') : '';
     }
 
-    // Ultimate fallback: If the user successfully generated a route (distance is set), but we couldn't scrape the text,
-    // we bypass the text validation so the booking still succeeds. The coordinates could be handled on backend if needed,
-    // but for now we send placeholder text.
+    // Ultimate fallback
     if (!pickupText && distanceKm) pickupText = 'Map Selected Pickup';
     if (!destText && distanceKm) destText = 'Map Selected Drop';
 
@@ -252,6 +250,38 @@ export default function Booking() {
 
     setStatus('submitting');
     
+    let pLat = null, pLng = null, dLat = null, dLng = null;
+
+    // Fetch exact coordinates
+    if (pickupText.toLowerCase().includes('current location') || pickupText.toLowerCase().includes('my location')) {
+        try {
+            const pos = await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+            });
+            pLat = pos.coords.latitude;
+            pLng = pos.coords.longitude;
+        } catch (e) {
+            console.log("Geolocation failed.");
+        }
+    }
+
+    // Geocode Fallback
+    try {
+        if (!pLat && pickupText) {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(pickupText)}&format=json&limit=1`);
+            const data = await res.json();
+            if (data && data.length > 0) { pLat = parseFloat(data[0].lat); pLng = parseFloat(data[0].lon); }
+        }
+        if (destText) {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(destText)}&format=json&limit=1`);
+            const data = await res.json();
+            if (data && data.length > 0) { dLat = parseFloat(data[0].lat); dLng = parseFloat(data[0].lon); }
+        }
+    } catch(e) { console.error("Geocoding failed", e); }
+
+    // Append distance to destination text for Admin Panel visibility
+    const finalDestText = `${destText} (${distanceKm} km)`;
+
     try {
       const res = await fetch('/api/bookings', {
         method: 'POST',
@@ -260,7 +290,11 @@ export default function Booking() {
           customerName: formData.customerName,
           customerPhone: formData.customerPhone,
           pickup: pickupText,
-          destination: destText,
+          destination: finalDestText,
+          pickupLat: pLat,
+          pickupLng: pLng,
+          destLat: dLat,
+          destLng: dLng,
           date: formData.date,
           time: formData.time,
           vehicleType: formData.vehicleType,

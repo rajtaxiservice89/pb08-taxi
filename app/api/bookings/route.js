@@ -37,7 +37,11 @@ export async function POST(request) {
         customerName: data.customerName,
         customerPhone: data.customerPhone,
         pickup: data.pickup,
+        pickupLat: data.pickupLat ? parseFloat(data.pickupLat) : null,
+        pickupLng: data.pickupLng ? parseFloat(data.pickupLng) : null,
         destination: data.destination,
+        destLat: data.destLat ? parseFloat(data.destLat) : null,
+        destLng: data.destLng ? parseFloat(data.destLng) : null,
         date: data.date,
         time: data.time,
         vehicleType: data.vehicleType,
@@ -48,9 +52,13 @@ export async function POST(request) {
       }
     });
 
+    const mapLink = (booking.pickupLat && booking.pickupLng) 
+      ? `https://www.google.com/maps/dir/?api=1&origin=${booking.pickupLat},${booking.pickupLng}&destination=${booking.destLat || ''},${booking.destLng || ''}`
+      : `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(booking.pickup)}&destination=${encodeURIComponent(booking.destination)}`;
+
     // Send WhatsApp to Admin (if ADMIN_PHONE is set in env)
     if (process.env.ADMIN_PHONE) {
-      const adminMsg = `🚕 *New Booking Received!*\n\n*Name:* ${data.customerName}\n*Phone:* ${data.customerPhone}\n*Pickup:* ${data.pickup}\n*Drop:* ${data.destination}\n*Date:* ${data.date} at ${data.time}\n*Vehicle:* ${data.vehicleType}\n*Fare:* ₹${data.estimatedFare || 'TBD'}`;
+      const adminMsg = `🚕 *New Booking Received!*\n\n*Name:* ${data.customerName}\n*Phone:* ${data.customerPhone}\n*Pickup:* ${data.pickup}\n*Drop:* ${data.destination}\n*Date:* ${data.date} at ${data.time}\n*Vehicle:* ${data.vehicleType}\n*Fare:* ₹${data.estimatedFare || 'TBD'}\n\n📍 *Map Location:*\n${mapLink}`;
       sendWhatsAppNotification(process.env.ADMIN_PHONE, adminMsg);
     }
 
@@ -145,7 +153,11 @@ export async function PATCH(request) {
 
     // Notify Driver if newly assigned
     if (assignedDriverId && updatedBooking.assignedDriver) {
-      const dMsg = `🚕 *New Trip Assigned!*\n\n*Pickup:* ${updatedBooking.pickup}\n*Drop:* ${updatedBooking.destination}\n*Date & Time:* ${updatedBooking.date} at ${updatedBooking.time}\n*Customer:* ${updatedBooking.customerName} (${updatedBooking.customerPhone})`;
+      const mapLink = (updatedBooking.pickupLat && updatedBooking.pickupLng) 
+        ? `https://www.google.com/maps/dir/?api=1&origin=${updatedBooking.pickupLat},${updatedBooking.pickupLng}&destination=${updatedBooking.destLat || ''},${updatedBooking.destLng || ''}`
+        : `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(updatedBooking.pickup)}&destination=${encodeURIComponent(updatedBooking.destination)}`;
+
+      const dMsg = `🚕 *New Trip Assigned!*\n\n*Pickup:* ${updatedBooking.pickup}\n*Drop:* ${updatedBooking.destination}\n*Date & Time:* ${updatedBooking.date} at ${updatedBooking.time}\n*Customer:* ${updatedBooking.customerName} (${updatedBooking.customerPhone})\n\n📍 *Map Navigation:*\n${mapLink}`;
       sendWhatsAppNotification(updatedBooking.assignedDriver.phone, dMsg);
     }
 
