@@ -4,9 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 
 export default function Booking() {
   const [formData, setFormData] = useState({
-    customerName: '', customerPhone: '', pickup: '', destination: '',
-    date: '', time: '', vehicleType: 'Sedan', passengers: 1, notes: '',
-    pickupLat: '', pickupLng: '', destLat: '', destLng: ''
+    customerName: '', customerPhone: '', 
+    date: '', time: '', vehicleType: 'Sedan', passengers: 1, notes: ''
   });
   const [status, setStatus] = useState('');
   const [distanceKm, setDistanceKm] = useState(null);
@@ -14,79 +13,15 @@ export default function Booking() {
   const [fareSettings, setFareSettings] = useState(null);
   const [locationApiConfig, setLocationApiConfig] = useState({ provider: 'nominatim', apiKey: '' });
   const [configLoaded, setConfigLoaded] = useState(false);
-  const [activeInput, setActiveInput] = useState('pickup'); // Track which input is active
-  
-  
   
   const mapRef = useRef(null);
-  const pickupMarkerRef = useRef(null);
-  const destMarkerRef = useRef(null);
-  const routeSourceId = 'osrm-route';
-  const routeLayerId = 'osrm-route-line';
   const mapInstance = useRef(null);
 
   const handleChange = (e) => {
     const { id, value } = e.target;
     setFormData(prev => ({ ...prev, [id]: value }));
-  };
-
-  const handleInputFocus = (type) => {
-    setActiveInput(type);
-    if (!mapInstance.current) return;
-    
-    if (type === 'pickup' && formData.pickupLat && formData.pickupLng) {
-      if (locationApiConfig.provider === 'mappls') {
-        try {
-           mapInstance.current.setCenter({ lat: formData.pickupLat, lng: formData.pickupLng });
-           mapInstance.current.setZoom(15);
-        } catch(e) {}
-      } else {
-        mapInstance.current.flyTo({ center: [formData.pickupLng, formData.pickupLat], zoom: 15 });
-      }
-    } else if (type === 'destination' && formData.destLat && formData.destLng) {
-      if (locationApiConfig.provider === 'mappls') {
-        try {
-           mapInstance.current.setCenter({ lat: formData.destLat, lng: formData.destLng });
-           mapInstance.current.setZoom(15);
-        } catch(e) {}
-      } else {
-        mapInstance.current.flyTo({ center: [formData.destLng, formData.destLat], zoom: 15 });
-      }
-    }
-  };
-
-  const handleKeyDown = async (e, type) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-
-      if (locationApiConfig.provider === 'mappls') {
-          // Let the Mappls plugin handle the Enter key natively.
-          return;
-      }
-
-      const el = document.getElementById(type);
-      const query = el ? el.value : '';
-      if (!query.trim()) return;
-      
-      // Update form data so we have the latest text even if geocode fails
-      if (type === 'pickup') {
-          setFormData(prev => ({ ...prev, pickup: query }));
-      } else {
-          setFormData(prev => ({ ...prev, destination: query }));
-      }
-
-      const r = await geocode(query);
-      if (r) {
-        if (type === 'pickup') {
-          setPickup(r.lng, r.lat, r.display);
-          if (mapInstance.current) mapInstance.current.flyTo({ center: [r.lng, r.lat], zoom: 14 });
-        } else {
-          setDest(r.lng, r.lat, r.display);
-          if (mapInstance.current) mapInstance.current.flyTo({ center: [r.lng, r.lat], zoom: 14 });
-        }
-      } else {
-        alert("Location not found. Please try zooming in and clicking on the map manually.");
-      }
+    if (id === 'vehicleType' && distanceKm !== null) {
+      calculateFare(distanceKm, value);
     }
   };
 
@@ -108,12 +43,7 @@ export default function Booking() {
       time: prev.time || defaultTime
     }));
 
-    // Re-calculate fare if vehicle type changes or fare settings load
-    if (distanceKm !== null) {
-      calculateFare(distanceKm, formData.vehicleType);
-    }
-
-    if (!configLoaded) return; // Wait for API config
+    if (!configLoaded) return;
 
     const loadMappls = () => {
       const script = document.createElement('script');
@@ -137,7 +67,7 @@ export default function Booking() {
        if (window.isMapplsLoaded) initMaps();
        else loadMappls();
     }
-  }, [formData.vehicleType, distanceKm, fareSettings, configLoaded, locationApiConfig]); // Re-run effect if config changes
+  }, [configLoaded, locationApiConfig]);
 
   useEffect(() => {
     fetch('/api/settings/fare')
@@ -152,6 +82,7 @@ export default function Booking() {
         const res = await fetch('/api/settings/location-api');
         if (res.ok) {
           const data = await res.json();
+          // Fetch backend token for Mappls API if needed
           if (data.provider === 'mappls') {
              const tRes = await fetch('/api/mappls/token');
              if (tRes.ok) {
@@ -166,36 +97,6 @@ export default function Booking() {
     };
     fetchLocationApi();
   }, []);
-
-  useEffect(() => {
-    if (formData.pickupLat && formData.pickupLng && formData.destLat && formData.destLng) {
-      fetchAndDrawRoute();
-    }
-  }, [formData.pickupLat, formData.pickupLng, formData.destLat, formData.destLng]);
-
-  const fetchAndDrawRoute = () => {
-    if (!mapInstance.current || !window.mappls || !window.mappls.direction) return;
-
-    // Clear previous direction plugin instance if exists
-    if (window.directionPlugin) {
-      window.directionPlugin.remove();
-    }
-
-    window.directionPlugin = new window.mappls.direction({
-      map: mapInstance.current,
-      start: { geoloc: `${formData.pickupLat},${formData.pickupLng}` },
-      end: { geoloc: `${formData.destLat},${formData.destLng}` },
-      profile: 'driving',
-      callback: (data) => {
-        if (data && data.routes && data.routes.length > 0) {
-          const route = data.routes[0];
-          const distKm = (route.distance / 1000).toFixed(1);
-          setDistanceKm(distKm);
-          calculateFare(distKm, formData.vehicleType);
-        }
-      }
-    });
-  };
 
   const calculateFare = (dist, vType) => {
     let baseFare = 50;
@@ -232,7 +133,6 @@ export default function Booking() {
 
     let total = Math.round(baseFare + appCost + driverCost + distanceRate);
     
-    // Add vehicle type multiplier if needed (optional)
     if (vType === 'Hatchback') total = Math.round(total * 0.9);
     else if (vType === 'SUV') total = Math.round(total * 1.2);
     else if (vType === 'Luxury') total = Math.round(total * 1.5);
@@ -240,232 +140,60 @@ export default function Booking() {
     setEstimatedFare(total);
   };
 
-  const revGeocode = async (lat, lng) => {
-    try {
-      if (locationApiConfig.token) {
-        const url = `/api/mappls/revgeocode?lat=${lat}&lng=${lng}&token=${locationApiConfig.token}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        
-        if (data.copResults && data.copResults.length > 0) {
-           return data.copResults[0].formatted_address || data.copResults[0].houseNumber || 'Location found';
-        }
-      }
-      return 'Selected Location';
-    } catch { return 'Selected Location'; }
-  };
-
-  const autocompleteSearch = async (q) => {
-    try {
-       if (locationApiConfig.token) {
-           try {
-               const url = `/api/mappls/geocode?query=${encodeURIComponent(q)}&token=${locationApiConfig.token}`;
-               const res = await fetch(url);
-               const data = await res.json();
-               if (data.suggestedLocations && data.suggestedLocations.length > 0) {
-                   return data.suggestedLocations.map(r => ({
-                       lat: parseFloat(r.latitude || r.lat || r.y || 0),
-                       lng: parseFloat(r.longitude || r.lng || r.x || 0),
-                       display: r.placeName + (r.placeAddress ? `, ${r.placeAddress}` : '')
-                   }));
-               }
-           } catch (e) { console.error('Mappls proxy auto fail', e); }
-       }
-       return [];
-    } catch (e) { return []; }
-  };
-
-  const geocode = async (q) => {
-    try {
-      if (locationApiConfig.token) {
-         const url = `/api/mappls/geocode?query=${encodeURIComponent(q)}&token=${locationApiConfig.token}`;
-         const res = await fetch(url);
-         const data = await res.json();
-         if (data.suggestedLocations && data.suggestedLocations.length > 0) {
-            const r = data.suggestedLocations[0];
-            return { lat: parseFloat(r.latitude || r.lat || r.y || 0), lng: parseFloat(r.longitude || r.lng || r.x || 0), display: r.placeName + (r.placeAddress ? `, ${r.placeAddress}` : '') };
-         }
-      }
-      return null;
-    } catch (e) {
-      console.error("Geocode error", e);
-      return null;
+  // Automatically recalculate fare when dependencies change (fixes stale closure bug in callback)
+  useEffect(() => {
+    if (distanceKm !== null) {
+      calculateFare(distanceKm, formData.vehicleType);
     }
-  };
-
-  const setPickup = async (lng, lat, addr) => {
-    const finalAddr = addr || formData.pickup;
-    setFormData(prev => ({ ...prev, pickupLat: lat, pickupLng: lng, pickup: finalAddr }));
-    const pEl = document.getElementById('pickup');
-    if (pEl && finalAddr && finalAddr !== 'Fetching current location...') pEl.value = finalAddr;
-
-    if(pickupMarkerRef.current) {
-        try { pickupMarkerRef.current.remove(); } catch(e) {}
-    }
-    
-    pickupMarkerRef.current = new window.mappls.Marker({ map: mapInstance.current, position: {lat, lng}, draggable: true, icon: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png' });
-    const attachDrag = (m) => m.addListener ? m.addListener('dragend', async () => {
-       const ll = pickupMarkerRef.current.getPosition();
-       const a = await revGeocode(ll.lat, ll.lng);
-       const newAddr = a || formData.pickup;
-       setFormData(prev => ({ ...prev, pickupLat: ll.lat, pickupLng: ll.lng, pickup: newAddr }));
-       const pEl = document.getElementById('pickup');
-       if (pEl && a) pEl.value = a;
-    }) : m.on('dragend', async () => {
-       const ll = pickupMarkerRef.current.getPosition ? pickupMarkerRef.current.getPosition() : pickupMarkerRef.current.getLngLat();
-       const a = await revGeocode(ll.lat || ll.lat, ll.lng || ll.lng);
-       const newAddr = a || formData.pickup;
-       setFormData(prev => ({ ...prev, pickupLat: ll.lat, pickupLng: ll.lng, pickup: newAddr }));
-       const pEl = document.getElementById('pickup');
-       if (pEl && a) pEl.value = a;
-    });
-    attachDrag(pickupMarkerRef.current);
-  };
-
-  const setDest = async (lng, lat, addr) => {
-    const finalAddr = addr || formData.destination;
-    setFormData(prev => ({ ...prev, destLat: lat, destLng: lng, destination: finalAddr }));
-    const dEl = document.getElementById('destination');
-    if (dEl && finalAddr) dEl.value = finalAddr;
-
-    if(destMarkerRef.current) {
-        try { destMarkerRef.current.remove(); } catch(e) {}
-    }
-    
-    destMarkerRef.current = new window.mappls.Marker({ map: mapInstance.current, position: {lat, lng}, draggable: true, icon: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png' });
-    const attachDrag = (m) => m.addListener ? m.addListener('dragend', async () => {
-       const ll = destMarkerRef.current.getPosition();
-       const a = await revGeocode(ll.lat, ll.lng);
-       const newAddr = a || formData.destination;
-       setFormData(prev => ({ ...prev, destLat: ll.lat, destLng: ll.lng, destination: newAddr }));
-       const dEl = document.getElementById('destination');
-       if (dEl && a) dEl.value = a;
-    }) : m.on('dragend', async () => {
-       const ll = destMarkerRef.current.getPosition ? destMarkerRef.current.getPosition() : destMarkerRef.current.getLngLat();
-       const a = await revGeocode(ll.lat || ll.lat, ll.lng || ll.lng);
-       const newAddr = a || formData.destination;
-       setFormData(prev => ({ ...prev, destLat: ll.lat, destLng: ll.lng, destination: newAddr }));
-       const dEl = document.getElementById('destination');
-       if (dEl && a) dEl.value = a;
-    });
-    attachDrag(destMarkerRef.current);
-  };
+  }, [distanceKm, formData.vehicleType, fareSettings]);
 
   const initMaps = () => {
     if (typeof window === 'undefined') return;
     if (!window.mappls) return;
-    if (mapInstance.current) return; // already init
+    if (mapInstance.current) return; 
 
     const initial = { lng: 75.5762, lat: 31.3260, zoom: 12 };
     
     try {
         mapInstance.current = new window.mappls.Map('mainMap', { center: [initial.lat, initial.lng], zoom: initial.zoom });
         
-        mapInstance.current.addListener('click', async (e) => {
-          const lat = e.lngLat.lat; const lng = e.lngLat.lng;
-          const a = await revGeocode(lat, lng);
-          
-          // Check which input was last active/focused
-          if (activeInput === 'destination') {
-              setDest(lng, lat, a);
-          } else if (activeInput === 'pickup') {
-              setPickup(lng, lat, a);
-          } else {
-              if (!formData.pickup || formData.pickup === 'Fetching current location...') {
-                  setPickup(lng, lat, a);
-              } else {
-                  setDest(lng, lat, a);
+        // Initialize Mappls Direction Plugin to render its native UI on the map
+        setTimeout(() => {
+            window.directionPlugin = new window.mappls.direction({
+              map: mapInstance.current,
+              search: true, // Native Mappls search inputs for pick/drop
+              profile: 'driving', // Force driving profile
+              callback: (data) => {
+                if (data && data.routes && data.routes.length > 0) {
+                  const route = data.routes[0];
+                  const distKm = (route.distance / 1000).toFixed(1);
+                  setDistanceKm(distKm);
+                } else {
+                  setDistanceKm(null);
+                  setEstimatedFare(null);
+                }
               }
-          }
-        });
+            });
+        }, 1000);
     } catch (err) {
         console.error("Mappls Init Error:", err);
     }
-       
-       // Attach Mappls Search Plugin to the input fields if available
-       if (window.mappls.search) {
-          setTimeout(() => {
-            const processLocationData = async (type, r) => {
-                if (!r) return;
-                let lat = parseFloat(r.latitude || r.lat || r.y || r.latPos || 0);
-                let lng = parseFloat(r.longitude || r.lng || r.lon || r.x || r.lonPos || 0);
-                const name = r.placeName || r.placeAddress || r.eLoc || r.name || '';
-                const eLoc = r.eLoc || r.mapplsPin || r.poiId;
-
-                // If coordinates are missing, it will fall back to geocode API
-
-                if (lat && lng) {
-                    if (type === 'pickup') {
-                        setPickup(lng, lat, name);
-                    } else {
-                        setDest(lng, lat, name);
-                    }
-                    if(mapInstance.current) {
-                        mapInstance.current.setCenter({lat, lng});
-                        mapInstance.current.setZoom(14);
-                    }
-                } else {
-                    // Final fallback
-                    const fallbackData = await geocode(name);
-                    if (fallbackData) {
-                        if (type === 'pickup') setPickup(fallbackData.lng, fallbackData.lat, name);
-                        else setDest(fallbackData.lng, fallbackData.lat, name);
-                        if(mapInstance.current) mapInstance.current.setCenter({lat: fallbackData.lat, lng: fallbackData.lng});
-                    }
-                }
-            };
-
-            const handlePluginData = (type, data) => {
-               if(data) {
-                  let r = null;
-                  if (Array.isArray(data)) r = data[0];
-                  else if (data.data && Array.isArray(data.data)) r = data.data[0];
-                  else if (data.suggestedLocations && Array.isArray(data.suggestedLocations)) r = data.suggestedLocations[0];
-                  else r = data;
-
-                  processLocationData(type, r);
-               }
-            };
-
-            const pInput = document.getElementById('pickup');
-            if (pInput) {
-               new window.mappls.search(pInput, { region: "IND" }, (data) => {
-                  handlePluginData('pickup', data);
-               });
-            }
-
-            const dInput = document.getElementById('destination');
-            if (dInput) {
-               new window.mappls.search(dInput, { region: "IND" }, (data) => {
-                  handlePluginData('destination', data);
-               });
-            }
-          }, 1000);
-       }
-  };
-
-
-
-  const handleCurrentLocation = () => {
-    if(!navigator.geolocation) { alert('Geolocation not supported'); return; }
-    
-    setFormData(prev => ({ ...prev, pickup: 'Fetching current location...' }));
-    
-    navigator.geolocation.getCurrentPosition(async pos => {
-      const lat = pos.coords.latitude, lng = pos.coords.longitude;
-      if(mapInstance.current) mapInstance.current.flyTo({ center: [lng, lat], zoom: 15 });
-      const a = await revGeocode(lat, lng);
-      setPickup(lng, lat, a || `${lat}, ${lng}`);
-    }, () => { 
-      setFormData(prev => ({ ...prev, pickup: '' }));
-      alert('Unable to get current location. Check browser permissions.'); 
-    }, {
-      enableHighAccuracy: true, timeout: 10000, maximumAge: 0
-    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Extract the text typed into the Mappls Direction Widget inputs
+    const pInput = document.getElementById('DrS_mainMap');
+    const dInput = document.getElementById('DrE_mainMap');
+    const pickupText = pInput ? pInput.value : '';
+    const destText = dInput ? dInput.value : '';
+
+    if (!pickupText || !destText || !distanceKm) {
+        alert("Please set both Pickup and Drop locations on the map and ensure a route is calculated.");
+        return;
+    }
+
     setStatus('submitting');
     
     try {
@@ -475,8 +203,8 @@ export default function Booking() {
         body: JSON.stringify({
           customerName: formData.customerName,
           customerPhone: formData.customerPhone,
-          pickup: formData.pickup,
-          destination: formData.destination,
+          pickup: pickupText,
+          destination: destText,
           date: formData.date,
           time: formData.time,
           vehicleType: formData.vehicleType,
@@ -500,7 +228,6 @@ export default function Booking() {
 
   return (
     <div className="pt-24 pb-12 relative min-h-[90vh]">
-      {/* Background Decor */}
       <div className="hidden md:block absolute top-1/4 left-1/4 w-96 h-96 bg-taxi-yellow/10 rounded-full blur-[100px] pointer-events-none"></div>
 
       <div className="container mx-auto px-4 relative z-10 flex justify-center items-center">
@@ -508,7 +235,7 @@ export default function Booking() {
           
           <div className="text-center mb-8">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">Book Your <span className="text-taxi-yellow">Ride</span></h2>
-            <p className="text-gray-400">Set your locations on the map or search addresses.</p>
+            <p className="text-gray-400">Search for your pickup and drop locations on the map below.</p>
           </div>
 
           {status === 'success' ? (
@@ -520,7 +247,9 @@ export default function Booking() {
               <p className="text-green-200">We've received your request. Our driver will contact you shortly.</p>
               <button onClick={() => {
                 setStatus('');
-                setFormData(prev => ({...prev, customerName: '', customerPhone: '', pickup: '', destination: ''}));
+                setFormData(prev => ({...prev, customerName: '', customerPhone: ''}));
+                // Refresh the page to reset the mappls UI fully
+                window.location.reload();
               }} className="mt-6 btn-outline">Book Another Ride</button>
             </div>
           ) : (
@@ -537,67 +266,9 @@ export default function Booking() {
                 </div>
               </div>
 
-              {/* Ola-style Map & Booking Section */}
-              <div className="relative mt-6 rounded-2xl overflow-hidden border border-white/10 shadow-2xl flex flex-col md:flex-row h-[500px] z-50">
-                
-                {/* Side Panel for Inputs */}
-                <div className="w-full md:w-1/3 bg-[#111] p-6 flex flex-col z-10 border-b md:border-b-0 md:border-r border-white/10 shadow-2xl relative">
-                  <h3 className="text-xl font-bold text-white mb-6">Where to?</h3>
-                  
-                  <div className="relative flex flex-col gap-5">
-                    {/* Connecting Line */}
-                    <div className="absolute left-[11px] top-[24px] bottom-[24px] w-[2px] bg-gray-800 z-0"></div>
-                    
-                    {/* Pickup Input Group */}
-                    <div className="relative z-10 flex items-center bg-black border border-white/10 rounded-lg p-3 focus-within:border-taxi-yellow transition-colors shadow-inner">
-                      <div className="w-6 flex justify-center mr-2">
-                         <div className="w-3 h-3 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-                      </div>
-                      <input
-                        type="text"
-                        id="pickup"
-                        placeholder="Search Pickup Location"
-                        className="w-full bg-transparent text-gray-200 placeholder-gray-500 focus:outline-none px-2"
-                        value={formData.pickup}
-                        onChange={handleChange}
-                        onFocus={() => handleInputFocus('pickup')}
-                        onKeyDown={(e) => handleKeyDown(e, 'pickup')}
-                      />
-                      <button type="button" onClick={handleCurrentLocation} className="text-gray-400 hover:text-taxi-yellow px-2 transition-colors" title="Use Current Location">
-                        <i className="fa-solid fa-location-crosshairs"></i>
-                      </button>
-                    </div>
-
-                    {/* Drop Input Group */}
-                    <div className="relative z-10 flex items-center bg-black border border-white/10 rounded-lg p-3 focus-within:border-red-500 transition-colors shadow-inner">
-                      <div className="w-6 flex justify-center mr-2">
-                         <div className="w-3 h-3 bg-red-500 rounded-sm shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div>
-                      </div>
-                      <input
-                        type="text"
-                        id="destination"
-                        placeholder="Search Drop Location"
-                        className="w-full bg-transparent text-gray-200 placeholder-gray-500 focus:outline-none px-2"
-                        value={formData.destination}
-                        onChange={handleChange}
-                        onFocus={() => handleInputFocus('destination')}
-                        onKeyDown={(e) => handleKeyDown(e, 'destination')}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="mt-auto pt-6">
-                    <p className="text-[11px] text-gray-500 leading-tight text-center bg-white/5 p-3 rounded-lg border border-white/5">
-                      <i className="fa-solid fa-circle-info mr-1"></i> Select from suggestions or press Enter. You can also click the map to set a pin.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Main Map */}
-                <div className="w-full md:w-2/3 h-full relative bg-[#222]">
-                  <div id="mainMap" ref={mapRef} className="w-full h-full absolute inset-0"></div>
-                </div>
-
+              {/* Pure Mappls Map with Native Search UI overlay */}
+              <div className="relative mt-6 rounded-2xl overflow-hidden border border-white/10 shadow-2xl h-[500px] z-50">
+                <div id="mainMap" ref={mapRef} className="w-full h-full absolute inset-0"></div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">

@@ -177,3 +177,13 @@ button, a, input, select, textarea {
 ::-webkit-scrollbar-thumb:hover {
   background: #FFD700;
 }
+
+/* Hide Mappls Direction Profile Selector (walking/biking icons) */
+.direction-profile,
+.direction-tab-profile,
+.mappls-direction-profile,
+.route-profile,
+[title="Walking"],
+[title="Biking"] {
+  display: none !important;
+}
