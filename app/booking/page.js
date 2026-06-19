@@ -214,6 +214,11 @@ export default function Booking() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    if (!formData.customerName || !formData.customerPhone) {
+        alert("Please enter your name and phone number.");
+        return;
+    }
+
     // Aggressive DOM scraping for Mappls direction widget text inputs
     let pickupText = '';
     let destText = '';
@@ -328,7 +333,7 @@ export default function Booking() {
               }} className="mt-6 btn-outline">Book Another Ride</button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6" noValidate>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
