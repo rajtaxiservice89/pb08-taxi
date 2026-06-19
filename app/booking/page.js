@@ -147,6 +147,24 @@ export default function Booking() {
     }
   }, [distanceKm, formData.vehicleType, fareSettings]);
 
+  // Bulletproof fallback: Scrape the distance directly from Mappls UI if callback is unreliable
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const mapEl = document.getElementById('mainMap');
+      if (mapEl && mapEl.innerText) {
+        const textMatches = mapEl.innerText.match(/(\d+(?:\.\d+)?)\s*km/i);
+        if (textMatches && textMatches[1]) {
+          const parsed = textMatches[1];
+          setDistanceKm(prev => {
+            if (prev !== parsed) return parsed;
+            return prev;
+          });
+        }
+      }
+    }, 1500);
+    return () => clearInterval(interval);
+  }, []);
+
   const initMaps = () => {
     if (typeof window === 'undefined') return;
     if (!window.mappls) return;
@@ -240,7 +258,31 @@ export default function Booking() {
   };
 
   return (
-    <div className="pt-24 pb-12 relative min-h-[90vh]">
+    <div className="min-h-screen bg-black pt-24 pb-12 relative">
+      <style dangerouslySetInnerHTML={{__html: `
+        /* Aggressive overwrite for Mappls Profile Icons to guarantee hiding */
+        .direction-profile,
+        .direction-tab-profile,
+        .mappls-direction-profile,
+        .route-profile,
+        .mapbox-directions-profile,
+        .mapboxgl-ctrl-directions-profile,
+        div[class*="directions-profile"],
+        div[class*="direction-profile"],
+        label[for*="profile"],
+        input[name*="profile"],
+        [title="Walking"],
+        [title="Biking"],
+        [title="walk"],
+        [title="bike"] {
+          display: none !important;
+          opacity: 0 !important;
+          visibility: hidden !important;
+          height: 0 !important;
+          width: 0 !important;
+        }
+      `}} />
+
       <div className="hidden md:block absolute top-1/4 left-1/4 w-96 h-96 bg-taxi-yellow/10 rounded-full blur-[100px] pointer-events-none"></div>
 
       <div className="container mx-auto px-4 relative z-10 flex justify-center items-center">
