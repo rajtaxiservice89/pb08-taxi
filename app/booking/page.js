@@ -32,7 +32,30 @@ export default function Booking() {
     setFormData(prev => ({ ...prev, [id]: value }));
   };
 
-
+  const handleInputFocus = (type) => {
+    setActiveInput(type);
+    if (!mapInstance.current) return;
+    
+    if (type === 'pickup' && formData.pickupLat && formData.pickupLng) {
+      if (locationApiConfig.provider === 'mappls') {
+        try {
+           mapInstance.current.setCenter({ lat: formData.pickupLat, lng: formData.pickupLng });
+           mapInstance.current.setZoom(15);
+        } catch(e) {}
+      } else {
+        mapInstance.current.flyTo({ center: [formData.pickupLng, formData.pickupLat], zoom: 15 });
+      }
+    } else if (type === 'destination' && formData.destLat && formData.destLng) {
+      if (locationApiConfig.provider === 'mappls') {
+        try {
+           mapInstance.current.setCenter({ lat: formData.destLat, lng: formData.destLng });
+           mapInstance.current.setZoom(15);
+        } catch(e) {}
+      } else {
+        mapInstance.current.flyTo({ center: [formData.destLng, formData.destLat], zoom: 15 });
+      }
+    }
+  };
 
   const handleKeyDown = async (e, type) => {
     if (e.key === 'Enter') {
@@ -818,7 +841,7 @@ export default function Booking() {
                         className="w-full bg-transparent text-gray-200 placeholder-gray-500 focus:outline-none px-2"
                         value={formData.pickup}
                         onChange={handleChange}
-                        onFocus={() => setActiveInput('pickup')}
+                        onFocus={() => handleInputFocus('pickup')}
                         onKeyDown={(e) => handleKeyDown(e, 'pickup')}
                       />
                       <button type="button" onClick={handleCurrentLocation} className="text-gray-400 hover:text-taxi-yellow px-2 transition-colors" title="Use Current Location">
@@ -838,7 +861,7 @@ export default function Booking() {
                         className="w-full bg-transparent text-gray-200 placeholder-gray-500 focus:outline-none px-2"
                         value={formData.destination}
                         onChange={handleChange}
-                        onFocus={() => setActiveInput('destination')}
+                        onFocus={() => handleInputFocus('destination')}
                         onKeyDown={(e) => handleKeyDown(e, 'destination')}
                       />
                     </div>
