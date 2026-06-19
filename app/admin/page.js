@@ -380,8 +380,16 @@ export default function AdminDashboard() {
           const booking = bookings.find(b => b.id === id);
             if (assignedDriver && booking) {
               const customerMsg = `Hello ${booking.customerName},\nYour ride from ${booking.pickup} to ${booking.destination} is Confirmed!\n\nDriver Details:\nName: ${assignedDriver.name}\nPhone: ${assignedDriver.contact}\nVehicle: ${assignedDriver.carName} - ${assignedDriver.carRegistration}\nEstimated Fare: ₹${booking.estimatedFare || 'N/A'}\n\nThe driver will reach you before the scheduled time.\nThank you for choosing Raj Taxi!`;
-              const mapsLink = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(booking.pickup)}&destination=${encodeURIComponent(booking.destination)}`;
-              const driverMsg = `New Booking Details:\nName: ${booking.customerName}\nPhone: ${booking.customerPhone}\nPickup: ${booking.pickup}\nDropoff: ${booking.destination}\nDate: ${booking.date} at ${booking.time}\nVehicle: ${booking.vehicleType}\nPassengers: ${booking.passengers}\nEstimated Fare: ₹${booking.estimatedFare || 'N/A'}\n\nNavigation Link:\n${mapsLink}`;
+              let mapsLink = '';
+              if (booking.pickupLat && booking.pickupLng && booking.destLat && booking.destLng) {
+                 mapsLink = `https://www.google.com/maps/dir/?api=1&origin=${booking.pickupLat},${booking.pickupLng}&destination=${booking.destLat},${booking.destLng}`;
+              } else if (booking.pickupLat && booking.pickupLng) {
+                 mapsLink = `https://www.google.com/maps/dir/?api=1&origin=${booking.pickupLat},${booking.pickupLng}&destination=${encodeURIComponent(booking.destination)}`;
+              } else {
+                 const o = booking.pickup.toLowerCase().includes('current') ? '' : `&origin=${encodeURIComponent(booking.pickup)}`;
+                 mapsLink = `https://www.google.com/maps/dir/?api=1${o}&destination=${encodeURIComponent(booking.destination)}`;
+              }
+              const driverMsg = `🚕 *New Trip Assigned!*\n\n*Pickup:* ${booking.pickup}\n*Drop:* ${booking.destination}\n*Date & Time:* ${booking.date} at ${booking.time}\n*Customer:* ${booking.customerName} (${booking.customerPhone})\n\n📍 *Map Navigation:*\n${mapsLink}`;
               
               if (waAutoMode) {
                 handleAutoSend(id, 'driver', assignedDriver.contact, driverMsg);
@@ -945,8 +953,16 @@ export default function AdminDashboard() {
                           </tr>
                         ) : (
                           filteredBookings.map(b => {
-                            const mapsLink = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(b.pickup)}&destination=${encodeURIComponent(b.destination)}`;
-                            const driverMsg = `New Booking Details:\nName: ${b.customerName}\nPhone: ${b.customerPhone}\nPickup: ${b.pickup}\nDropoff: ${b.destination}\nDate: ${b.date} at ${b.time}\nVehicle: ${b.vehicleType}\nPassengers: ${b.passengers}\nEstimated Fare: ₹${b.estimatedFare || 'N/A'}\n\nNavigation Link:\n${mapsLink}`;
+                            let mapsLink = '';
+                            if (b.pickupLat && b.pickupLng && b.destLat && b.destLng) {
+                               mapsLink = `https://www.google.com/maps/dir/?api=1&origin=${b.pickupLat},${b.pickupLng}&destination=${b.destLat},${b.destLng}`;
+                            } else if (b.pickupLat && b.pickupLng) {
+                               mapsLink = `https://www.google.com/maps/dir/?api=1&origin=${b.pickupLat},${b.pickupLng}&destination=${encodeURIComponent(b.destination)}`;
+                            } else {
+                               const o = b.pickup.toLowerCase().includes('current') ? '' : `&origin=${encodeURIComponent(b.pickup)}`;
+                               mapsLink = `https://www.google.com/maps/dir/?api=1${o}&destination=${encodeURIComponent(b.destination)}`;
+                            }
+                            const driverMsg = `🚕 *New Trip Assigned!*\n\n*Pickup:* ${b.pickup}\n*Drop:* ${b.destination}\n*Date & Time:* ${b.date} at ${b.time}\n*Customer:* ${b.customerName} (${b.customerPhone})\n\n📍 *Map Navigation:*\n${mapsLink}`;
                             const customerMsg = `Hello ${b.customerName},\nYour ride from ${b.pickup} to ${b.destination} is Confirmed!\n\nDriver Details:\nName: ${b.assignedDriver?.name}\nPhone: ${b.assignedDriver?.contact}\nVehicle: ${b.assignedDriver?.carName} - ${b.assignedDriver?.carRegistration}\nEstimated Fare: ₹${b.estimatedFare || 'N/A'}\n\nThe driver will reach you before the scheduled time.\nThank you for choosing Raj Taxi!`;
                             
                             return (
