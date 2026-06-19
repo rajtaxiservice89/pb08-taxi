@@ -256,24 +256,36 @@ export default function Booking() {
     if (pickupText.toLowerCase().includes('current location') || pickupText.toLowerCase().includes('my location')) {
         try {
             const pos = await new Promise((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+                navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
             });
             pLat = pos.coords.latitude;
             pLng = pos.coords.longitude;
         } catch (e) {
             console.log("Geolocation failed.");
+            alert("Could not get your precise location. Please allow location access in your browser or type your address manually.");
+            setStatus('error');
+            return;
         }
     }
 
     // Geocode Fallback
+    const cleanAddress = (addr) => {
+        if (!addr) return '';
+        // Take only the first two parts of an address to improve Nominatim success rate
+        // e.g., "Rama Mandi, Jalandhar, Punjab, 144005" -> "Rama Mandi, Jalandhar"
+        const parts = addr.split(',');
+        if (parts.length >= 2) return parts[0].trim() + ', ' + parts[1].trim();
+        return addr;
+    };
+
     try {
-        if (!pLat && pickupText) {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(pickupText)}&format=json&limit=1`);
+        if (!pLat && pickupText && !pickupText.toLowerCase().includes('current')) {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cleanAddress(pickupText))}&format=json&limit=1`);
             const data = await res.json();
             if (data && data.length > 0) { pLat = parseFloat(data[0].lat); pLng = parseFloat(data[0].lon); }
         }
-        if (destText) {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(destText)}&format=json&limit=1`);
+        if (destText && !destText.toLowerCase().includes('current')) {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cleanAddress(destText))}&format=json&limit=1`);
             const data = await res.json();
             if (data && data.length > 0) { dLat = parseFloat(data[0].lat); dLng = parseFloat(data[0].lon); }
         }

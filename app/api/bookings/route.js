@@ -52,9 +52,15 @@ export async function POST(request) {
       }
     });
 
-    const mapLink = (booking.pickupLat && booking.pickupLng) 
-      ? `https://www.google.com/maps/dir/?api=1&origin=${booking.pickupLat},${booking.pickupLng}&destination=${booking.destLat || ''},${booking.destLng || ''}`
-      : `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(booking.pickup)}&destination=${encodeURIComponent(booking.destination)}`;
+    let mapLink = '';
+    if (booking.pickupLat && booking.pickupLng && booking.destLat && booking.destLng) {
+       mapLink = `https://www.google.com/maps/dir/?api=1&origin=${booking.pickupLat},${booking.pickupLng}&destination=${booking.destLat},${booking.destLng}`;
+    } else if (booking.pickupLat && booking.pickupLng) {
+       mapLink = `https://www.google.com/maps/dir/?api=1&origin=${booking.pickupLat},${booking.pickupLng}&destination=${encodeURIComponent(booking.destination)}`;
+    } else {
+       const o = booking.pickup.toLowerCase().includes('current') ? '' : `&origin=${encodeURIComponent(booking.pickup)}`;
+       mapLink = `https://www.google.com/maps/dir/?api=1${o}&destination=${encodeURIComponent(booking.destination)}`;
+    }
 
     // Send WhatsApp to Admin (if ADMIN_PHONE is set in env)
     if (process.env.ADMIN_PHONE) {
@@ -153,9 +159,15 @@ export async function PATCH(request) {
 
     // Notify Driver if newly assigned
     if (assignedDriverId && updatedBooking.assignedDriver) {
-      const mapLink = (updatedBooking.pickupLat && updatedBooking.pickupLng) 
-        ? `https://www.google.com/maps/dir/?api=1&origin=${updatedBooking.pickupLat},${updatedBooking.pickupLng}&destination=${updatedBooking.destLat || ''},${updatedBooking.destLng || ''}`
-        : `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(updatedBooking.pickup)}&destination=${encodeURIComponent(updatedBooking.destination)}`;
+      let mapLink = '';
+      if (updatedBooking.pickupLat && updatedBooking.pickupLng && updatedBooking.destLat && updatedBooking.destLng) {
+         mapLink = `https://www.google.com/maps/dir/?api=1&origin=${updatedBooking.pickupLat},${updatedBooking.pickupLng}&destination=${updatedBooking.destLat},${updatedBooking.destLng}`;
+      } else if (updatedBooking.pickupLat && updatedBooking.pickupLng) {
+         mapLink = `https://www.google.com/maps/dir/?api=1&origin=${updatedBooking.pickupLat},${updatedBooking.pickupLng}&destination=${encodeURIComponent(updatedBooking.destination)}`;
+      } else {
+         const o = updatedBooking.pickup.toLowerCase().includes('current') ? '' : `&origin=${encodeURIComponent(updatedBooking.pickup)}`;
+         mapLink = `https://www.google.com/maps/dir/?api=1${o}&destination=${encodeURIComponent(updatedBooking.destination)}`;
+      }
 
       const dMsg = `🚕 *New Trip Assigned!*\n\n*Pickup:* ${updatedBooking.pickup}\n*Drop:* ${updatedBooking.destination}\n*Date & Time:* ${updatedBooking.date} at ${updatedBooking.time}\n*Customer:* ${updatedBooking.customerName} (${updatedBooking.customerPhone})\n\n📍 *Map Navigation:*\n${mapLink}`;
       sendWhatsAppNotification(updatedBooking.assignedDriver.phone, dMsg);
