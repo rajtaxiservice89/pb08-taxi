@@ -211,52 +211,62 @@ export default function Booking() {
   const drawRouteOnMap = (mapInst, geojson) => {
     if (!mapInst) return;
     
-    if (locationApiConfig.provider === 'mappls') {
-        const pts = geojson.geometry.coordinates.map(coord => ({ lat: coord[1], lng: coord[0] }));
-        if (window.routeLine) {
-            try { window.routeLine.remove(); } catch(e) {}
-        }
-        window.routeLine = new window.mappls.Polyline({
-            map: mapInst,
-            path: pts,
-            strokeColor: '#3b82f6',
-            strokeOpacity: 0.8,
-            strokeWeight: 5,
-            fitbounds: true
+    if (mapInst.getSource && mapInst.addSource) {
+      if (mapInst.getSource(routeSourceId)) {
+        mapInst.getSource(routeSourceId).setData(geojson);
+      } else {
+        mapInst.addSource(routeSourceId, {
+          type: 'geojson',
+          data: geojson
         });
-        return;
-    }
+        mapInst.addLayer({
+          id: routeLayerId,
+          type: 'line',
+          source: routeSourceId,
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          paint: {
+            'line-color': '#3b82f6', // blue
+            'line-width': 4,
+            'line-opacity': 0.8
+          }
+        });
+      }
 
-    if (mapInst.getSource(routeSourceId)) {
-      mapInst.getSource(routeSourceId).setData(geojson);
-    } else {
-      mapInst.addSource(routeSourceId, {
-        type: 'geojson',
-        data: geojson
-      });
-      mapInst.addLayer({
-        id: routeLayerId,
-        type: 'line',
-        source: routeSourceId,
-        layout: {
-          'line-join': 'round',
-          'line-cap': 'round'
-        },
-        paint: {
-          'line-color': '#3b82f6', // blue
-          'line-width': 4,
-          'line-opacity': 0.8
+      // Fit map bounds to the route without relying on mapLibreRef (which is null for Mappls)
+      const coordinates = geojson.geometry.coordinates;
+      if (coordinates && coordinates.length > 0) {
+        let minLng = coordinates[0][0];
+        let maxLng = coordinates[0][0];
+        let minLat = coordinates[0][1];
+        let maxLat = coordinates[0][1];
+        
+        for (let i = 1; i < coordinates.length; i++) {
+          if (coordinates[i][0] < minLng) minLng = coordinates[i][0];
+          if (coordinates[i][0] > maxLng) maxLng = coordinates[i][0];
+          if (coordinates[i][1] < minLat) minLat = coordinates[i][1];
+          if (coordinates[i][1] > maxLat) maxLat = coordinates[i][1];
         }
+        
+        mapInst.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 40 });
+      }
+    } else {
+      // Fallback for native Mappls Polyline if addSource is missing
+      const pts = geojson.geometry.coordinates.map(coord => ({ lat: coord[1], lng: coord[0] }));
+      if (window.routeLine) {
+          try { window.routeLine.remove(); } catch(e) {}
+      }
+      window.routeLine = new window.mappls.Polyline({
+          map: mapInst,
+          path: pts,
+          strokeColor: '#3b82f6',
+          strokeOpacity: 0.8,
+          strokeWeight: 5,
+          fitbounds: true
       });
     }
-
-    // Fit map bounds to the route
-    const coordinates = geojson.geometry.coordinates;
-    const bounds = coordinates.reduce((b, coord) => {
-      return b.extend(coord);
-    }, new mapLibreRef.current.LngLatBounds(coordinates[0], coordinates[0]));
-    
-    mapInst.fitBounds(bounds, { padding: 40 });
   };
 
   const calculateFare = (dist, vType) => {
