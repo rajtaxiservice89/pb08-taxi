@@ -211,6 +211,22 @@ export default function Booking() {
   const drawRouteOnMap = (mapInst, geojson) => {
     if (!mapInst) return;
     
+    if (locationApiConfig.provider === 'mappls') {
+        const pts = geojson.geometry.coordinates.map(coord => ({ lat: coord[1], lng: coord[0] }));
+        if (window.routeLine) {
+            try { window.routeLine.remove(); } catch(e) {}
+        }
+        window.routeLine = new window.mappls.Polyline({
+            map: mapInst,
+            path: pts,
+            strokeColor: '#3b82f6',
+            strokeOpacity: 0.8,
+            strokeWeight: 5,
+            fitbounds: true
+        });
+        return;
+    }
+
     if (mapInst.getSource(routeSourceId)) {
       mapInst.getSource(routeSourceId).setData(geojson);
     } else {
@@ -447,7 +463,7 @@ export default function Booking() {
         try { pickupMarkerRef.current.setMap(null); } catch(e) {}
     }
     if (locationApiConfig.provider === 'mappls') {
-       pickupMarkerRef.current = new window.mappls.Marker({ map: mapInstance.current, position: {lat, lng}, draggable: true, icon: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png' });
+       pickupMarkerRef.current = new window.mappls.Marker({ map: mapInstance.current, position: {lat, lng}, draggable: true, icon: 'https://apis.mapmyindia.com/map_v3/1.png' });
        const attachDrag = (m) => m.addListener ? m.addListener('dragend', async () => {
           const ll = pickupMarkerRef.current.getPosition();
           const a = await revGeocode(ll.lat, ll.lng);
@@ -490,7 +506,7 @@ export default function Booking() {
         try { destMarkerRef.current.setMap(null); } catch(e) {}
     }
     if (locationApiConfig.provider === 'mappls') {
-       destMarkerRef.current = new window.mappls.Marker({ map: mapInstance.current, position: {lat, lng}, draggable: true, icon: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png' });
+       destMarkerRef.current = new window.mappls.Marker({ map: mapInstance.current, position: {lat, lng}, draggable: true, icon: 'https://apis.mapmyindia.com/map_v3/2.png' });
        const attachDrag = (m) => m.addListener ? m.addListener('dragend', async () => {
           const ll = destMarkerRef.current.getPosition();
           const a = await revGeocode(ll.lat, ll.lng);
