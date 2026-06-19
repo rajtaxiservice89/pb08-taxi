@@ -183,6 +183,12 @@ button, a, input, select, textarea {
 .direction-tab-profile,
 .mappls-direction-profile,
 .route-profile,
+.mapbox-directions-profile,
+.mapboxgl-ctrl-directions-profile,
+div[class*="directions-profile"],
+div[class*="direction-profile"],
+label[for*="profile"],
+input[name*="profile"],
 [title="Walking"],
 [title="Biking"] {
   display: none !important;

@@ -164,10 +164,23 @@ export default function Booking() {
               search: true, // Native Mappls search inputs for pick/drop
               profile: 'driving', // Force driving profile
               callback: (data) => {
-                if (data && data.routes && data.routes.length > 0) {
-                  const route = data.routes[0];
-                  const distKm = (route.distance / 1000).toFixed(1);
-                  setDistanceKm(distKm);
+                console.log("Mappls direction callback data:", data);
+                let dist = null;
+                
+                // Mappls direction data payload format can vary.
+                if (data && data.distance) dist = data.distance;
+                else if (data && data.routes && data.routes.length > 0) dist = data.routes[0].distance;
+                else if (data && data.data && data.data.routes && data.data.routes.length > 0) dist = data.data.routes[0].distance;
+                else if (data && data.alternatives && data.alternatives.length > 0) dist = data.alternatives[0].distance;
+
+                if (dist !== null && dist !== undefined) {
+                  const km = (parseFloat(dist) / 1000).toFixed(1);
+                  if (!isNaN(km)) {
+                      setDistanceKm(km);
+                  } else {
+                      setDistanceKm(null);
+                      setEstimatedFare(null);
+                  }
                 } else {
                   setDistanceKm(null);
                   setEstimatedFare(null);
