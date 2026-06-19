@@ -447,7 +447,7 @@ export default function Booking() {
         try { pickupMarkerRef.current.setMap(null); } catch(e) {}
     }
     if (locationApiConfig.provider === 'mappls') {
-       pickupMarkerRef.current = new window.mappls.Marker({ map: mapInstance.current, position: {lat, lng}, draggable: true, icon: 'https://apis.mapmyindia.com/map_v3/1.png' });
+       pickupMarkerRef.current = new window.mappls.Marker({ map: mapInstance.current, position: {lat, lng}, draggable: true, icon: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png' });
        const attachDrag = (m) => m.addListener ? m.addListener('dragend', async () => {
           const ll = pickupMarkerRef.current.getPosition();
           const a = await revGeocode(ll.lat, ll.lng);
@@ -490,7 +490,7 @@ export default function Booking() {
         try { destMarkerRef.current.setMap(null); } catch(e) {}
     }
     if (locationApiConfig.provider === 'mappls') {
-       destMarkerRef.current = new window.mappls.Marker({ map: mapInstance.current, position: {lat, lng}, draggable: true, icon: 'https://apis.mapmyindia.com/map_v3/2.png' });
+       destMarkerRef.current = new window.mappls.Marker({ map: mapInstance.current, position: {lat, lng}, draggable: true, icon: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png' });
        const attachDrag = (m) => m.addListener ? m.addListener('dragend', async () => {
           const ll = destMarkerRef.current.getPosition();
           const a = await revGeocode(ll.lat, ll.lng);
