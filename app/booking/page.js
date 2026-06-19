@@ -589,19 +589,7 @@ export default function Booking() {
                 const name = r.placeName || r.placeAddress || r.eLoc || r.name || '';
                 const eLoc = r.eLoc || r.mapplsPin || r.poiId;
 
-                // If coordinates are still missing after the plugin fires, 
-                // the plugin (since we passed map) will have already centered the map there.
-                // We can wait a tiny bit and grab the map center!
-                if (!lat || !lng) {
-                    if (mapInstance.current) {
-                       await new Promise(res => setTimeout(res, 300));
-                       const center = mapInstance.current.getCenter();
-                       if (center) {
-                           lat = center.lat;
-                           lng = center.lng;
-                       }
-                    }
-                }
+                // If coordinates are missing, it will fall back to geocode API
 
                 if (lat && lng) {
                     if (type === 'pickup') {
@@ -638,14 +626,14 @@ export default function Booking() {
 
             const pInput = document.getElementById('pickup');
             if (pInput) {
-               new window.mappls.search(pInput, { map: mapInstance.current }, (data) => {
+               new window.mappls.search(pInput, { region: "IND" }, (data) => {
                   handlePluginData('pickup', data);
                });
             }
 
             const dInput = document.getElementById('destination');
             if (dInput) {
-               new window.mappls.search(dInput, { map: mapInstance.current }, (data) => {
+               new window.mappls.search(dInput, { region: "IND" }, (data) => {
                   handlePluginData('destination', data);
                });
             }
