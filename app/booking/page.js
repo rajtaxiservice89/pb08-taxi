@@ -358,24 +358,29 @@ export default function Booking() {
 
     const initial = { lng: 75.5762, lat: 31.3260, zoom: 12 };
     
-             const a = await revGeocode(lat, lng);
-             
-             // Check which input was last active/focused
-             if (activeInput === 'destination') {
-                 setDest(lng, lat, a);
-             } else if (activeInput === 'pickup') {
-                 setPickup(lng, lat, a);
-             } else {
-                 if (!formData.pickup || formData.pickup === 'Fetching current location...') {
-                     setPickup(lng, lat, a);
-                 } else {
-                     setDest(lng, lat, a);
-                 }
-             }
-           });
-       } catch (err) {
-           console.error("Mappls Init Error:", err);
-       }
+    try {
+        mapInstance.current = new window.mappls.Map('mainMap', { center: [initial.lat, initial.lng], zoom: initial.zoom });
+        
+        mapInstance.current.addListener('click', async (e) => {
+          const lat = e.lngLat.lat; const lng = e.lngLat.lng;
+          const a = await revGeocode(lat, lng);
+          
+          // Check which input was last active/focused
+          if (activeInput === 'destination') {
+              setDest(lng, lat, a);
+          } else if (activeInput === 'pickup') {
+              setPickup(lng, lat, a);
+          } else {
+              if (!formData.pickup || formData.pickup === 'Fetching current location...') {
+                  setPickup(lng, lat, a);
+              } else {
+                  setDest(lng, lat, a);
+              }
+          }
+        });
+    } catch (err) {
+        console.error("Mappls Init Error:", err);
+    }
        
        // Attach Mappls Search Plugin to the input fields if available
        if (window.mappls.search) {
