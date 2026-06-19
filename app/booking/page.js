@@ -19,8 +19,6 @@ export default function Booking() {
   
   
   const mapRef = useRef(null);
-  
-  const mapLibreRef = useRef(null);
   const pickupMarkerRef = useRef(null);
   const destMarkerRef = useRef(null);
   const routeSourceId = 'osrm-route';
@@ -118,51 +116,26 @@ export default function Booking() {
     if (!configLoaded) return; // Wait for API config
 
     const loadMappls = () => {
-      if (locationApiConfig.provider === 'mappls') {
-        const script = document.createElement('script');
-        script.src = `https://sdk.mappls.com/map/sdk/web?v=3.0&access_token=${locationApiConfig.apiKey}`;
-        script.async = true;
-        script.defer = true;
-        document.head.appendChild(script);
+      const script = document.createElement('script');
+      script.src = `https://sdk.mappls.com/map/sdk/web?v=3.0&access_token=${locationApiConfig.apiKey}`;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
 
-        script.onload = () => {
-          const pluginScript = document.createElement('script');
-          pluginScript.src = `https://sdk.mappls.com/map/sdk/plugins?v=3.0&access_token=${locationApiConfig.apiKey}`;
-          document.head.appendChild(pluginScript);
-          pluginScript.onload = () => {
-             window.isMapplsLoaded = true;
-             initMaps();
-          };
+      script.onload = () => {
+        const pluginScript = document.createElement('script');
+        pluginScript.src = `https://sdk.mappls.com/map/sdk/plugins?v=3.0&access_token=${locationApiConfig.apiKey}`;
+        document.head.appendChild(pluginScript);
+        pluginScript.onload = () => {
+           window.isMapplsLoaded = true;
+           initMaps();
         };
-        return;
-      }
+      };
     };
 
-    const loadMapLibre = () => {
-      if (typeof window !== 'undefined' && window.maplibregl) {
-        mapLibreRef.current = window.maplibregl;
-        initMaps();
-      } else {
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js';
-        const link = document.createElement('link');
-        link.href = 'https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css';
-        link.rel = 'stylesheet';
-        script.async = true;
-        script.onload = () => {
-          mapLibreRef.current = window.maplibregl;
-          initMaps();
-        };
-        document.head.appendChild(link);
-        document.body.appendChild(script);
-      }
-    };
-
-    if (locationApiConfig.provider === 'mappls') {
+    if (locationApiConfig.provider === 'mappls' || locationApiConfig.apiKey) {
        if (window.isMapplsLoaded) initMaps();
        else loadMappls();
-    } else {
-       loadMapLibre();
     }
   }, [formData.vehicleType, distanceKm, fareSettings, configLoaded, locationApiConfig]); // Re-run effect if config changes
 
@@ -200,98 +173,28 @@ export default function Booking() {
     }
   }, [formData.pickupLat, formData.pickupLng, formData.destLat, formData.destLng]);
 
-  const fetchAndDrawRoute = async () => {
-    try {
-      let url = `https://router.project-osrm.org/route/v1/driving/${formData.pickupLng},${formData.pickupLat};${formData.destLng},${formData.destLat}?overview=full&geometries=geojson`;
-      let headers = {};
-      
-      if (locationApiConfig.provider === 'mappls') {
-         // Direct Mappls routing requires OAuth; if needed, implement REST proxy, otherwise use OSRM backend via API
-         // Here we just keep standard OSRM for now as it doesn't use Nominatim (routing only)
-         url = `https://router.project-osrm.org/route/v1/driving/${formData.pickupLng},${formData.pickupLat};${formData.destLng},${formData.destLat}?overview=full&geometries=geojson`;
-      }
-      
-      const res = await fetch(url, { headers });
-      const data = await res.json();
-      
-      if (data.routes && data.routes.length > 0) {
-        const route = data.routes[0];
-        const distKm = (route.distance / 1000).toFixed(1);
-        setDistanceKm(distKm);
-        calculateFare(distKm, formData.vehicleType);
+  const fetchAndDrawRoute = () => {
+    if (!mapInstance.current || !window.mappls || !window.mappls.direction) return;
 
-        const geojson = {
-          type: 'Feature',
-          properties: {},
-          geometry: route.geometry
-        };
-
-        drawRouteOnMap(mapInstance.current, geojson);
-      }
-    } catch (err) {
-      console.error("Failed to fetch route", err);
+    // Clear previous direction plugin instance if exists
+    if (window.directionPlugin) {
+      window.directionPlugin.remove();
     }
-  };
 
-  const drawRouteOnMap = (mapInst, geojson) => {
-    if (!mapInst) return;
-    
-    if (mapInst.getSource && mapInst.addSource) {
-      if (mapInst.getSource(routeSourceId)) {
-        mapInst.getSource(routeSourceId).setData(geojson);
-      } else {
-        mapInst.addSource(routeSourceId, {
-          type: 'geojson',
-          data: geojson
-        });
-        mapInst.addLayer({
-          id: routeLayerId,
-          type: 'line',
-          source: routeSourceId,
-          layout: {
-            'line-join': 'round',
-            'line-cap': 'round'
-          },
-          paint: {
-            'line-color': '#3b82f6', // blue
-            'line-width': 4,
-            'line-opacity': 0.8
-          }
-        });
-      }
-
-      // Fit map bounds to the route without relying on mapLibreRef (which is null for Mappls)
-      const coordinates = geojson.geometry.coordinates;
-      if (coordinates && coordinates.length > 0) {
-        let minLng = coordinates[0][0];
-        let maxLng = coordinates[0][0];
-        let minLat = coordinates[0][1];
-        let maxLat = coordinates[0][1];
-        
-        for (let i = 1; i < coordinates.length; i++) {
-          if (coordinates[i][0] < minLng) minLng = coordinates[i][0];
-          if (coordinates[i][0] > maxLng) maxLng = coordinates[i][0];
-          if (coordinates[i][1] < minLat) minLat = coordinates[i][1];
-          if (coordinates[i][1] > maxLat) maxLat = coordinates[i][1];
+    window.directionPlugin = new window.mappls.direction({
+      map: mapInstance.current,
+      start: { geoloc: `${formData.pickupLat},${formData.pickupLng}` },
+      end: { geoloc: `${formData.destLat},${formData.destLng}` },
+      profile: 'driving',
+      callback: (data) => {
+        if (data && data.routes && data.routes.length > 0) {
+          const route = data.routes[0];
+          const distKm = (route.distance / 1000).toFixed(1);
+          setDistanceKm(distKm);
+          calculateFare(distKm, formData.vehicleType);
         }
-        
-        mapInst.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 40 });
       }
-    } else {
-      // Fallback for native Mappls Polyline if addSource is missing
-      const pts = geojson.geometry.coordinates.map(coord => ({ lat: coord[1], lng: coord[0] }));
-      if (window.routeLine) {
-          try { window.routeLine.remove(); } catch(e) {}
-      }
-      window.routeLine = new window.mappls.Polyline({
-          map: mapInst,
-          path: pts,
-          strokeColor: '#3b82f6',
-          strokeOpacity: 0.8,
-          strokeWeight: 5,
-          fitbounds: true
-      });
-    }
+    });
   };
 
   const calculateFare = (dist, vType) => {
@@ -338,147 +241,50 @@ export default function Booking() {
   };
 
   const revGeocode = async (lat, lng) => {
-    try{
-      if (locationApiConfig.provider === 'mappls') {
-           return "Location found";
-      }
-
-      let keys = [locationApiConfig.apiKey];
-      if (locationApiConfig.apiKey && locationApiConfig.apiKey.includes(',')) {
-         keys = locationApiConfig.apiKey.split(',').map(k => k.trim());
-         keys.sort(() => 0.5 - Math.random()); // shuffle for load balancing
-      }
-
-      if (locationApiConfig.provider === 'geoapify' && keys.length > 0) {
-        for (const key of keys) {
-          const url = `https://api.geoapify.com/v1/geocode/reverse?lat=${lat}&lon=${lng}&apiKey=${key}&format=json`;
-          const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-          if (res.status === 401 || res.status === 429 || res.status === 403) continue;
-          const data = await res.json();
-          if (data.results && data.results.length > 0) return data.results[0].formatted || '';
-          return '';
-        }
-        return '';
-      }
-
-      let url = '';
-      if (locationApiConfig.provider === 'locationiq' && locationApiConfig.apiKey) {
-        url = `https://us1.locationiq.com/v1/reverse?key=${locationApiConfig.apiKey}&lat=${lat}&lon=${lng}&format=json`;
-        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    try {
+      if (locationApiConfig.token) {
+        const url = `/api/mappls/revgeocode?lat=${lat}&lng=${lng}&token=${locationApiConfig.token}`;
+        const res = await fetch(url);
         const data = await res.json();
-        return data?.display_name || '';
+        
+        if (data.copResults && data.copResults.length > 0) {
+           return data.copResults[0].formatted_address || data.copResults[0].houseNumber || 'Location found';
+        }
       }
-      return '';
-    } catch { return ''; }
+      return 'Selected Location';
+    } catch { return 'Selected Location'; }
   };
 
   const autocompleteSearch = async (q) => {
     try {
-      if (locationApiConfig.provider === 'mappls') {
-           // Mappls auto complete proxy
-           if (locationApiConfig.token) {
-               try {
-                   const res = await fetch(`/api/mappls/geocode?query=${encodeURIComponent(q)}&token=${locationApiConfig.token}`);
-                   const data = await res.json();
-                   if (data.suggestedLocations && data.suggestedLocations.length > 0) {
-                       return data.suggestedLocations.map(r => ({
-                           lat: parseFloat(r.latitude || r.lat || r.y || 0),
-                           lng: parseFloat(r.longitude || r.lng || r.x || 0),
-                           display: r.placeName + (r.placeAddress ? `, ${r.placeAddress}` : '')
-                       }));
-                   }
-               } catch (e) { console.error('Mappls proxy auto fail', e); }
-           }
-           return [];
-      }
-
-      let keys = [locationApiConfig.apiKey];
-      if (locationApiConfig.apiKey && locationApiConfig.apiKey.includes(',')) {
-         keys = locationApiConfig.apiKey.split(',').map(k => k.trim());
-         keys.sort(() => 0.5 - Math.random());
-      }
-
-      if (locationApiConfig.provider === 'geoapify' && keys.length > 0) {
-        for (const key of keys) {
-           const query = encodeURIComponent(q);
-           const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${query}&apiKey=${key}&format=json`;
-           const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
-           if (res.status === 401 || res.status === 429 || res.status === 403) continue;
-           const data = await res.json();
-           if (data.results && data.results.length > 0) {
-             return data.results.map(r => ({ lat: parseFloat(r.lat), lng: parseFloat(r.lon), display: r.formatted || '' }));
-           }
-           return [];
-        }
-        return [];
-      }
-
-      let data = [];
-      if (locationApiConfig.provider === 'locationiq' && locationApiConfig.apiKey) {
-        const url = `https://us1.locationiq.com/v1/autocomplete?key=${locationApiConfig.apiKey}&q=${encodeURIComponent(q)}&format=json&countrycodes=in`;
-        const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
-        data = await res.json();
-        if (data.error) return [];
-      }
-      
-      if (data && data.length > 0) {
-        return data.slice(0, 5).map(r => ({ lat: parseFloat(r.lat), lng: parseFloat(r.lon), display: r.display_name || r.display_place || r.name || '' }));
-      }
-      return [];
-    } catch (e) {
-      return [];
-    }
+       if (locationApiConfig.token) {
+           try {
+               const url = `/api/mappls/geocode?query=${encodeURIComponent(q)}&token=${locationApiConfig.token}`;
+               const res = await fetch(url);
+               const data = await res.json();
+               if (data.suggestedLocations && data.suggestedLocations.length > 0) {
+                   return data.suggestedLocations.map(r => ({
+                       lat: parseFloat(r.latitude || r.lat || r.y || 0),
+                       lng: parseFloat(r.longitude || r.lng || r.x || 0),
+                       display: r.placeName + (r.placeAddress ? `, ${r.placeAddress}` : '')
+                   }));
+               }
+           } catch (e) { console.error('Mappls proxy auto fail', e); }
+       }
+       return [];
+    } catch (e) { return []; }
   };
 
   const geocode = async (q) => {
     try {
-      if (locationApiConfig.provider === 'mappls' && locationApiConfig.token) {
-         try {
-           const url = `/api/mappls/geocode?query=${encodeURIComponent(q)}&token=${locationApiConfig.token}`;
-           const res = await fetch(url);
-           const data = await res.json();
-           if (data.suggestedLocations && data.suggestedLocations.length > 0) {
-              const r = data.suggestedLocations[0];
-              return { lat: parseFloat(r.latitude || r.lat || r.y || 0), lng: parseFloat(r.longitude || r.lng || r.x || 0), display: r.placeName + (r.placeAddress ? `, ${r.placeAddress}` : '') };
-           }
-         } catch(e) { console.error("Mappls Geocode Error:", e); }
-         return null;
-      }
-
-      let keys = [locationApiConfig.apiKey];
-      if (locationApiConfig.apiKey && locationApiConfig.apiKey.includes(',')) {
-         keys = locationApiConfig.apiKey.split(',').map(k => k.trim());
-         keys.sort(() => 0.5 - Math.random());
-      }
-
-      if (locationApiConfig.provider === 'geoapify' && keys.length > 0) {
-        for (const key of keys) {
-           const query = encodeURIComponent(q);
-           // Using search with India filter, or just autocomplete.
-           const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${query}&apiKey=${key}&format=json`;
-           const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
-           if (res.status === 401 || res.status === 429 || res.status === 403) continue;
-           const data = await res.json();
-           if (data.results && data.results.length > 0) {
-             return { lat: parseFloat(data.results[0].lat), lng: parseFloat(data.results[0].lon), display: data.results[0].formatted || '' };
-           }
-           return null;
-        }
-        return null;
-      }
-
-      let data = [];
-      if (locationApiConfig.provider === 'locationiq' && locationApiConfig.apiKey) {
-        // Use search endpoint which is stricter than autocomplete
-        const query = `${q}`;
-        const url = `https://us1.locationiq.com/v1/search?key=${locationApiConfig.apiKey}&q=${encodeURIComponent(query)}&format=json&countrycodes=in`;
-        const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
-        data = await res.json();
-        if (data.error) return null;
-      }
-      
-      if (data && data.length > 0) {
-        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name || data[0].display_place || data[0].name || '' };
+      if (locationApiConfig.token) {
+         const url = `/api/mappls/geocode?query=${encodeURIComponent(q)}&token=${locationApiConfig.token}`;
+         const res = await fetch(url);
+         const data = await res.json();
+         if (data.suggestedLocations && data.suggestedLocations.length > 0) {
+            const r = data.suggestedLocations[0];
+            return { lat: parseFloat(r.latitude || r.lat || r.y || 0), lng: parseFloat(r.longitude || r.lng || r.x || 0), display: r.placeName + (r.placeAddress ? `, ${r.placeAddress}` : '') };
+         }
       }
       return null;
     } catch (e) {
@@ -495,39 +301,25 @@ export default function Booking() {
 
     if(pickupMarkerRef.current) {
         try { pickupMarkerRef.current.remove(); } catch(e) {}
-        try { pickupMarkerRef.current.setMap(null); } catch(e) {}
     }
-    if (locationApiConfig.provider === 'mappls') {
-       pickupMarkerRef.current = new window.mappls.Marker({ map: mapInstance.current, position: {lat, lng}, draggable: true, icon: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png' });
-       const attachDrag = (m) => m.addListener ? m.addListener('dragend', async () => {
-          const ll = pickupMarkerRef.current.getPosition();
-          const a = await revGeocode(ll.lat, ll.lng);
-          const newAddr = a || formData.pickup;
-          setFormData(prev => ({ ...prev, pickupLat: ll.lat, pickupLng: ll.lng, pickup: newAddr }));
-          const pEl = document.getElementById('pickup');
-          if (pEl && a) pEl.value = a;
-       }) : m.on('dragend', async () => {
-          const ll = pickupMarkerRef.current.getPosition ? pickupMarkerRef.current.getPosition() : pickupMarkerRef.current.getLngLat();
-          const a = await revGeocode(ll.lat || ll.lat, ll.lng || ll.lng);
-          const newAddr = a || formData.pickup;
-          setFormData(prev => ({ ...prev, pickupLat: ll.lat, pickupLng: ll.lng, pickup: newAddr }));
-          const pEl = document.getElementById('pickup');
-          if (pEl && a) pEl.value = a;
-       });
-       attachDrag(pickupMarkerRef.current);
-    } else {
-       pickupMarkerRef.current = new mapLibreRef.current.Marker({ color: '#22c55e', draggable: true })
-         .setLngLat([lng, lat])
-         .addTo(mapInstance.current);
-       pickupMarkerRef.current.on('dragend', async () => {
-         const ll = pickupMarkerRef.current.getLngLat();
-         const a = await revGeocode(ll.lat, ll.lng);
-         const newAddr = a || formData.pickup;
-         setFormData(prev => ({ ...prev, pickupLat: ll.lat, pickupLng: ll.lng, pickup: newAddr }));
-         const pEl = document.getElementById('pickup');
-         if (pEl && a) pEl.value = a;
-       });
-    }
+    
+    pickupMarkerRef.current = new window.mappls.Marker({ map: mapInstance.current, position: {lat, lng}, draggable: true, icon: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png' });
+    const attachDrag = (m) => m.addListener ? m.addListener('dragend', async () => {
+       const ll = pickupMarkerRef.current.getPosition();
+       const a = await revGeocode(ll.lat, ll.lng);
+       const newAddr = a || formData.pickup;
+       setFormData(prev => ({ ...prev, pickupLat: ll.lat, pickupLng: ll.lng, pickup: newAddr }));
+       const pEl = document.getElementById('pickup');
+       if (pEl && a) pEl.value = a;
+    }) : m.on('dragend', async () => {
+       const ll = pickupMarkerRef.current.getPosition ? pickupMarkerRef.current.getPosition() : pickupMarkerRef.current.getLngLat();
+       const a = await revGeocode(ll.lat || ll.lat, ll.lng || ll.lng);
+       const newAddr = a || formData.pickup;
+       setFormData(prev => ({ ...prev, pickupLat: ll.lat, pickupLng: ll.lng, pickup: newAddr }));
+       const pEl = document.getElementById('pickup');
+       if (pEl && a) pEl.value = a;
+    });
+    attachDrag(pickupMarkerRef.current);
   };
 
   const setDest = async (lng, lat, addr) => {
@@ -538,86 +330,34 @@ export default function Booking() {
 
     if(destMarkerRef.current) {
         try { destMarkerRef.current.remove(); } catch(e) {}
-        try { destMarkerRef.current.setMap(null); } catch(e) {}
     }
-    if (locationApiConfig.provider === 'mappls') {
-       destMarkerRef.current = new window.mappls.Marker({ map: mapInstance.current, position: {lat, lng}, draggable: true, icon: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png' });
-       const attachDrag = (m) => m.addListener ? m.addListener('dragend', async () => {
-          const ll = destMarkerRef.current.getPosition();
-          const a = await revGeocode(ll.lat, ll.lng);
-          const newAddr = a || formData.destination;
-          setFormData(prev => ({ ...prev, destLat: ll.lat, destLng: ll.lng, destination: newAddr }));
-          const dEl = document.getElementById('destination');
-          if (dEl && a) dEl.value = a;
-       }) : m.on('dragend', async () => {
-          const ll = destMarkerRef.current.getPosition ? destMarkerRef.current.getPosition() : destMarkerRef.current.getLngLat();
-          const a = await revGeocode(ll.lat || ll.lat, ll.lng || ll.lng);
-          const newAddr = a || formData.destination;
-          setFormData(prev => ({ ...prev, destLat: ll.lat, destLng: ll.lng, destination: newAddr }));
-          const dEl = document.getElementById('destination');
-          if (dEl && a) dEl.value = a;
-       });
-       attachDrag(destMarkerRef.current);
-    } else {
-       destMarkerRef.current = new mapLibreRef.current.Marker({ color: '#ef4444', draggable: true })
-         .setLngLat([lng, lat])
-         .addTo(mapInstance.current);
-       destMarkerRef.current.on('dragend', async () => {
-         const ll = destMarkerRef.current.getLngLat();
-         const a = await revGeocode(ll.lat, ll.lng);
-         const newAddr = a || formData.destination;
-         setFormData(prev => ({ ...prev, destLat: ll.lat, destLng: ll.lng, destination: newAddr }));
-         const dEl = document.getElementById('destination');
-         if (dEl && a) dEl.value = a;
-       });
-    }
+    
+    destMarkerRef.current = new window.mappls.Marker({ map: mapInstance.current, position: {lat, lng}, draggable: true, icon: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png' });
+    const attachDrag = (m) => m.addListener ? m.addListener('dragend', async () => {
+       const ll = destMarkerRef.current.getPosition();
+       const a = await revGeocode(ll.lat, ll.lng);
+       const newAddr = a || formData.destination;
+       setFormData(prev => ({ ...prev, destLat: ll.lat, destLng: ll.lng, destination: newAddr }));
+       const dEl = document.getElementById('destination');
+       if (dEl && a) dEl.value = a;
+    }) : m.on('dragend', async () => {
+       const ll = destMarkerRef.current.getPosition ? destMarkerRef.current.getPosition() : destMarkerRef.current.getLngLat();
+       const a = await revGeocode(ll.lat || ll.lat, ll.lng || ll.lng);
+       const newAddr = a || formData.destination;
+       setFormData(prev => ({ ...prev, destLat: ll.lat, destLng: ll.lng, destination: newAddr }));
+       const dEl = document.getElementById('destination');
+       if (dEl && a) dEl.value = a;
+    });
+    attachDrag(destMarkerRef.current);
   };
 
   const initMaps = () => {
-    if (!mapRef.current) return;
-    if (locationApiConfig.provider !== 'mappls' && !mapLibreRef.current) return;
+    if (typeof window === 'undefined') return;
+    if (!window.mappls) return;
     if (mapInstance.current) return; // already init
 
     const initial = { lng: 75.5762, lat: 31.3260, zoom: 12 };
     
-    let finalStyle = {
-      version: 8,
-      sources: {
-        baseMap: {
-          type: 'raster',
-          tiles: [
-            'https://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}',
-            'https://mt1.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}',
-            'https://mt2.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}',
-            'https://mt3.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}'
-          ],
-          tileSize: 256,
-          attribution: 'Map data © Google'
-        }
-      },
-      layers: [ { id: 'baseMap', type: 'raster', source: 'baseMap' } ]
-    };
-
-    if (locationApiConfig.provider === 'locationiq' && locationApiConfig.apiKey) {
-      finalStyle = `https://tiles.locationiq.com/v3/streets/raster.json?key=${locationApiConfig.apiKey}`;
-    }
-
-    if (locationApiConfig.provider === 'geoapify' && locationApiConfig.apiKey) {
-      let keys = [locationApiConfig.apiKey];
-      if (locationApiConfig.apiKey.includes(',')) {
-         keys = locationApiConfig.apiKey.split(',').map(k => k.trim());
-      }
-      const randomKey = keys[Math.floor(Math.random() * keys.length)];
-      finalStyle = `https://maps.geoapify.com/v1/styles/osm-carto/style.json?apiKey=${randomKey}`;
-    }
-
-    if (locationApiConfig.provider === 'mappls') {
-       if (!window.mappls) return;
-       try {
-           mapInstance.current = new window.mappls.Map('mainMap', { center: [initial.lat, initial.lng], zoom: initial.zoom });
-           
-           mapInstance.current.addListener('click', async (e) => {
-             const lat = e.lngLat.lat; const lng = e.lngLat.lng;
              const a = await revGeocode(lat, lng);
              
              // Check which input was last active/focused
@@ -697,32 +437,6 @@ export default function Booking() {
             }
           }, 1000);
        }
-       
-    } else {
-       // MapLibre Maps
-       mapInstance.current = new mapLibreRef.current.Map({
-         container: mapRef.current, style: finalStyle, center: [initial.lng, initial.lat], zoom: initial.zoom,
-       });
-
-       mapInstance.current.addControl(new mapLibreRef.current.NavigationControl(), 'top-right');
-
-       mapInstance.current.on('click', async (e) => {
-         const { lng, lat } = e.lngLat;
-         const a = await revGeocode(lat, lng);
-         
-         if (activeInput === 'destination') {
-             setDest(lng, lat, a);
-         } else if (activeInput === 'pickup') {
-             setPickup(lng, lat, a);
-         } else {
-             if (!formData.pickup || formData.pickup === 'Fetching current location...') {
-                 setPickup(lng, lat, a);
-             } else {
-                 setDest(lng, lat, a);
-             }
-         }
-       });
-    }
   };
 
 
